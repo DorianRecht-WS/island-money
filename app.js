@@ -314,7 +314,7 @@ function render(animate) {
   $('mBalance').title = user ? 'Click to change' : 'Sign in';
   if (!user && !pending) { $('mBalance').textContent = '€-'; say('Tap here to sign in'); drawChart(); return; }
   if (!animate) $('mBalance').textContent = eur(data.balance);
-  say(link ? [link.bank_name + ' · ' + (link.synced_at ? 'synced ' + ago(link.synced_at) : 'syncing...'), pendingAdj ? `includes ${signed(pendingAdj)} not yet in your bank's data` : ''].filter(Boolean).join('\n') : data.accounts ? 'Entered by hand · tap the amount to change it' : 'Tap the amount to set your balance');
+  say(link ? [link.synced_at ? 'Synced ' + ago(link.synced_at) : 'Syncing...', pendingAdj ? `includes ${signed(pendingAdj)} not yet in your bank's data` : ''].filter(Boolean).join('\n') : data.accounts ? 'Entered by hand · tap the amount to change it' : 'Tap the amount to set your balance');
   renderStats(); drawChart();
   if (animate) introWanted = true;
   syncLoading();
