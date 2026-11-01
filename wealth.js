@@ -44,6 +44,19 @@ const Wealth = (() => {
     return pts;
   }
 
-  return { r2, KINDS, totals, gain, yearly, project };
+  // What a balance typed in on a given day is worth now if it earns ratePct a year (compounded daily, like a livret's interest builds up).
+  function grow(value, ratePct, since, today = new Date()) {
+    const days = (today - new Date(since)) / 864e5;
+    if (!(ratePct > 0) || !(days > 0) || !Number.isFinite(days)) return r2(value);
+    return r2(value * (1 + ratePct / 100) ** (days / 365.25));
+  }
+
+  // Annualised growth between two prices, over a number of days.
+  function annualised(from, to, days) {
+    if (!(from > 0) || !(to > 0) || !(days >= 30)) return null;
+    return (to / from) ** (365.25 / days) - 1;
+  }
+
+  return { r2, KINDS, totals, gain, yearly, project, grow, annualised };
 })();
 if (typeof module !== 'undefined') module.exports = Wealth; else window.Wealth = Wealth;

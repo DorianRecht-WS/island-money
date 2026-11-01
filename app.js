@@ -152,6 +152,7 @@ function showTab(t) {
   for (const v of document.querySelectorAll('.view')) v.classList.toggle('on', v.id === 'v-' + t);
   moveInd();
   if (t === 'money') sizeChart();
+  if (t === 'wealth') loadRates();
   blobRuns();
   if (!first) { enter(t, true); if (t === 'money' && user) refresh(); }
 }
@@ -406,7 +407,9 @@ $('bankSync').addEventListener('click', async () => { bankNote = ''; bankBad = f
 // ---- the Wealth tab: net worth, investments with their returns, and the growth calculator (the arithmetic is in wealth.js)
 let assets = [];   // the user's own assets rows (investments, savings, property, debts), typed in
 let bankAssets = [];   // the same kinds of thing, but read from the bank's accounts (a livret, a PEA, a loan)
-const allAssets = () => bankAssets.concat(assets);
+// what each typed-in item is worth today: a rate makes it grow by itself from the day it was typed in (debts do not grow here)
+const grown = (a) => (a.kind === 'debt' || !a.rate ? a.value : Wealth.grow(a.value, a.rate, a.updated));
+const allAssets = () => bankAssets.concat(assets.map((a) => ({ ...a, value: grown(a) })));
 const KIND_COLOR = { cash: 'var(--accent)', investment: 'var(--accent-2)', savings: 'var(--ok)', property: 'var(--warn)', debt: 'var(--danger)' };
 const signed = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + eur(Math.abs(n));
 const pct = (x, digits = 1) => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x * 100).toFixed(digits) + '%';
@@ -433,7 +436,7 @@ function renderWealth() {
   $('stGain').className = g ? (g.amount >= 0 ? 'up' : 'down') : '';
   $('assetList').innerHTML = all.map((a) => {
     const gn = a.kind === 'investment' ? Wealth.gain(a.invested, a.value) : null, yr = a.kind === 'investment' && a.since ? Wealth.yearly(a.invested, a.value, a.since) : null;
-    const sub = gn ? `${pct(gn.pct)}${yr !== null ? ` · ${pct(yr)}/yr` : ''}` : a.fromBank ? `${Wealth.KINDS[a.kind]} · from your bank` : Wealth.KINDS[a.kind];
+    const sub = gn ? `${pct(gn.pct)}${yr !== null ? ` · ${pct(yr)}/yr` : ''}` : a.fromBank ? `${Wealth.KINDS[a.kind]} · from your bank` : `${Wealth.KINDS[a.kind]}${a.rate ? ` · ${a.rate}%/yr` : ''}`;
     return `<li${a.fromBank ? ' class="bank"' : ` data-id="${esc(a.id)}" tabindex="0"`}><i style="background:${KIND_COLOR[a.kind]}"></i><div class="main"><b>${esc(a.name)}</b><small${gn ? ` class="${gn.amount >= 0 ? 'up' : 'down'}"` : ''}>${sub}</small></div><span class="amt">${a.kind === 'debt' ? '−' : ''}${eur(a.value)}</span></li>`;
   }).join('') || '<li class="empty">Add an investment, a savings account, property or a debt to see your net worth.</li>';
   renderProjection();
@@ -444,7 +447,8 @@ function openAssetForm(a) {
   editingAsset = a || 'new';
   $('assetForm').hidden = false; $('assetAdd').textContent = 'Close';
   $('asName').value = a ? a.name : ''; $('asKind').value = a ? a.kind : 'investment';
-  $('asInvested').value = a ? String(a.invested) : ''; $('asValue').value = a ? String(a.value) : '';
+  $('asInvested').value = a ? String(a.invested) : ''; $('asValue').value = a ? String(grown(a)) : '';
+  $('asRate').value = a && a.rate ? String(a.rate) : '';
   $('asSince').value = a ? a.since : ymd(new Date());
   $('asErr').textContent = ''; $('asCancel').textContent = a ? 'Delete' : 'Cancel';
   $('asChips').hidden = !!a;   // quick names only when adding
@@ -455,14 +459,23 @@ $('mNw').addEventListener('click', () => showTab('wealth'));
 $('assetAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } $('assetForm').hidden ? openAssetForm(null) : closeAssetForm(); });
 $('assetList').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); if (li && user) openAssetForm(assets.find((a) => a.id === li.dataset.id)); });
 $('assetList').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const li = e.target.closest('li[data-id]'); if (li && user) openAssetForm(assets.find((a) => a.id === li.dataset.id)); } });
-$('asChips').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $('asName').value = b.dataset.n; $('asKind').value = b.dataset.k; $('asKind').dispatchEvent(new Event('change')); $('asValue').focus(); });
+$('asChips').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  $('asName').value = b.dataset.n; $('asKind').value = b.dataset.k; $('asKind').dispatchEvent(new Event('change'));
+  const known = rates && b.dataset.r && rates.savings.rates.find((r) => r.id === b.dataset.r);   // the official rate, when we have it
+  $('asRate').value = known ? String(known.rate) : '';
+  $('asValue').focus();
+});
 $('asKind').addEventListener('change', () => { $('asInvested').placeholder = $('asKind').value === 'investment' ? 'Put in (€)' : 'Put in (optional)'; });
 $('assetForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const value = parseMoney($('asValue').value), invText = $('asInvested').value.trim(), invested = invText ? parseMoney(invText) : 0;
   const kind = $('asKind').value;
   if (value === null || value < 0 || invested === null || invested < 0) { $('asErr').textContent = 'Amounts must be positive numbers like 1250.50'; return; }
+  const rateText = $('asRate').value.trim().replace(',', '.'), rate = rateText ? Number(rateText) : 0;
+  if (!Number.isFinite(rate) || rate < 0 || rate > 100) { $('asErr').textContent = 'The interest rate is a percent a year, like 1.7'; return; }
   const row = { name: $('asName').value.trim(), kind, value, invested: kind === 'investment' ? invested : 0, since: $('asSince').value || ymd(new Date()) };
+  if (rate > 0 || (editingAsset && editingAsset.rate)) row.rate = rate;   // (left out when there is none: works before the rate column exists)
   $('asSave').disabled = true;
   const { error } = editingAsset && editingAsset !== 'new'
     ? await sb.from('assets').update(row).eq('id', editingAsset.id)
@@ -480,10 +493,41 @@ $('asCancel').addEventListener('click', async () => {
   } else closeAssetForm();
 });
 async function loadAssets() {
-  const r = await sb.from('assets').select('id,kind,name,invested,value,since').order('created_at');
-  assets = (r.data || []).map((a) => ({ ...a, invested: Number(a.invested), value: Number(a.value) }));   // (no table yet, before its migration: none)
+  const r = await sb.from('assets').select('*').order('created_at');   // (all columns: works before and after the rate column)
+  assets = (r.data || []).map((a) => ({ ...a, invested: Number(a.invested), value: Number(a.value), rate: Number(a.rate) || 0, updated: a.updated_at || a.created_at }));   // (no table yet, before its migration: none)
   renderWealth();
 }
+
+// ---- the rates card: what savings pay (set by the State) and how a few markets did, from the public `rates` function
+const RATES_API = `${url}/functions/v1/rates`, RATES_KEY = 'money.rates';
+let rates = null;
+try { const c = JSON.parse(localStorage.getItem(RATES_KEY)); if (c && c.body) rates = c.body; } catch { /* none saved */ }
+const pc = (x) => (x === null || x === undefined ? '–' : pct(x));
+const ratesAge = () => { try { return JSON.parse(localStorage.getItem(RATES_KEY)).at; } catch { return 0; } };
+function renderRates() {
+  if (!rates) { $('rateSavings').innerHTML = '<li class="empty">Loading rates...</li>'; $('rateMarkets').innerHTML = ''; return; }
+  const s = rates.savings;
+  $('rateSavings').innerHTML = s.rates.map((r) => `<li><div class="main"><b>${esc(r.name)}</b><small>${esc(r.note)}</small></div><span class="amt">${r.rate}%</span></li>`).join('');
+  $('rateMarkets').innerHTML = rates.markets.map((m) => `<li><div class="main"><b>${esc(m.name)}</b><small>This year <em class="${m.retYtd >= 0 ? 'up' : 'down'}">${pc(m.retYtd)}</em> · 5 years <em class="${m.ret5y >= 0 ? 'up' : 'down'}">${pc(m.ret5y)}</em> a year</small></div><span class="amt ${m.ret1y >= 0 ? 'up' : 'down'}">${pc(m.ret1y)}</span></li>`).join('') || '<li class="empty">Market figures are not available right now.</li>';
+  const until = new Date(s.until).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  $('ratesFine').textContent = `${s.outdated ? 'These savings rates may have changed since ' + until + '. ' : `Savings rates apply until ${until}. `}Markets: price change over one year, dividends not included, delayed. Past results promise nothing.`;
+  $('ratesNote').textContent = ratesAge() ? `Updated ${ago(new Date(ratesAge()).toISOString())}` : '';
+  // one tap puts a rate into the calculator below
+  const sel = [['Livret A', s.rates.find((r) => r.id === 'livret-a')?.rate], ...rates.markets.filter((m) => m.ret5y != null).map((m) => [`${m.name.split(' (')[0]} 5y`, Math.round(m.ret5y * 1000) / 10])].filter((x) => x[1] != null);
+  $('pjChips').innerHTML = sel.map(([n, r]) => `<button type="button" data-r="${r}">${esc(n)} ${r}%</button>`).join('');
+}
+async function loadRates(force) {
+  if (!force && rates && Date.now() - ratesAge() < 30 * 60 * 1000) { renderRates(); return; }
+  renderRates();
+  try {
+    const res = await fetch(RATES_API);
+    if (!res.ok) throw new Error('rates ' + res.status);
+    rates = await res.json();
+    try { localStorage.setItem(RATES_KEY, JSON.stringify({ at: Date.now(), body: rates })); } catch { /* not saved */ }
+    renderRates();
+  } catch (e) { console.error(e); if (!rates) $('rateSavings').innerHTML = '<li class="empty">Rates are not available right now.</li>'; }
+}
+$('pjChips').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { $('pjRate').value = b.dataset.r; $('pjRate').dispatchEvent(new Event('input')); } });
 
 // ---- the growth calculator: what your investments and savings could become if you keep adding every month
 const PJ_KEY = 'money.projection';
@@ -599,7 +643,9 @@ content.addEventListener('touchcancel', endPull, { passive: true });
 renderAccount();
 renderBank();
 renderWealth();
+renderRates();
 showTab('money');
+setTimeout(() => loadRates(), 1500);   // after the first paint
 if (bankReturn) showTab('settings');   // coming back from the bank: show the result where it was started
 sizeChart();
 sb.auth.onAuthStateChange((_event, session) => onSession(session));

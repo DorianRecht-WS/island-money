@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=14">
+<link rel="stylesheet" href="web.css?v=16">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -102,17 +102,27 @@
           <ul id="assetList" class="alist"></ul>
           <form id="assetForm" class="aform" hidden autocomplete="off">
             <div class="chips wide" id="asChips">
-              <button type="button" data-n="Livret A" data-k="savings">Livret A</button><button type="button" data-n="Livret Jeune" data-k="savings">Livret Jeune</button><button type="button" data-n="LDDS" data-k="savings">LDDS</button><button type="button" data-n="PEA" data-k="investment">PEA</button><button type="button" data-n="Assurance vie" data-k="investment">Assurance vie</button><button type="button" data-n="Crypto" data-k="investment">Crypto</button>
+              <button type="button" data-n="Livret A" data-k="savings" data-r="livret-a">Livret A</button><button type="button" data-n="Livret Jeune" data-k="savings" data-r="livret-jeune">Livret Jeune</button><button type="button" data-n="LDDS" data-k="savings" data-r="ldds">LDDS</button><button type="button" data-n="LEP" data-k="savings" data-r="lep">LEP</button><button type="button" data-n="PEL" data-k="savings" data-r="pel">PEL</button><button type="button" data-n="PEA" data-k="investment">PEA</button><button type="button" data-n="Assurance vie" data-k="investment">Assurance vie</button><button type="button" data-n="Crypto" data-k="investment">Crypto</button>
             </div>
             <input class="field wide" id="asName" placeholder="Name (e.g. PEA, Livret A, Flat)" maxlength="60" aria-label="Name" required>
             <select class="field" id="asKind" aria-label="Type"><option value="investment">Investment</option><option value="savings">Savings</option><option value="property">Property</option><option value="debt">Debt</option></select>
             <input class="field" id="asSince" type="date" aria-label="Since">
             <input class="field" id="asInvested" inputmode="decimal" placeholder="Put in (&euro;)" maxlength="14" aria-label="Amount put in">
             <input class="field" id="asValue" inputmode="decimal" placeholder="Worth now (&euro;)" maxlength="14" aria-label="Worth now" required>
+            <input class="field wide" id="asRate" inputmode="decimal" placeholder="Interest rate, % per year (optional)" maxlength="6" aria-label="Interest rate in percent per year">
             <button class="pillbtn primary" id="asSave" type="submit">Save</button>
             <button class="pillbtn" id="asCancel" type="button">Cancel</button>
             <p class="err wide" id="asErr" role="alert"></p>
           </form>
+        </div>
+        <div id="ratesCard" class="notch">
+          <i data-ic="bank"></i>
+          <div class="ch"><span class="k">Rates</span><span id="ratesNote" class="rnote"></span></div>
+          <div class="rlabel">Savings in France</div>
+          <ul id="rateSavings" class="alist rlist"></ul>
+          <div class="rlabel">Markets <small>change over 1 year</small></div>
+          <ul id="rateMarkets" class="alist rlist"></ul>
+          <small class="fine" id="ratesFine"></small>
         </div>
         <div id="projCard" class="notch">
           <i data-ic="trend"></i>
@@ -122,6 +132,7 @@
             <label>Return / year %<input class="field" id="pjRate" inputmode="decimal" maxlength="5" aria-label="Return per year in percent"></label>
             <label>Years<input class="field" id="pjYears" inputmode="numeric" maxlength="2" aria-label="Number of years"></label>
           </div>
+          <div class="chips" id="pjChips"></div>
           <div class="pres"><b id="pjTotal">&euro;0</b><small id="pjSub"></small></div>
           <svg id="pjChart" role="img" aria-label="Projected growth"></svg>
           <small class="fine">An estimate, not a promise: real markets go up and down.</small>
@@ -184,7 +195,7 @@
 <script defer src="config.js"></script>
 <script defer src="icons.js"></script>
 <script defer src="notch.js?v=5"></script>
-<script defer src="wealth.js?v=1"></script>
-<script defer src="app.js?v=18"></script>
+<script defer src="wealth.js?v=2"></script>
+<script defer src="app.js?v=20"></script>
 </body>
 </html>
