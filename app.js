@@ -652,19 +652,22 @@ $('lockSw').addEventListener('click', async () => {
 
 // ---- the Budget tab: a monthly limit per category, against what was spent this month (the arithmetic is in budget.js)
 let budgets = {};   // category -> monthly limit
-let monthTx = [];   // this month's operations
+let monthTx = [];   // this month's operations (what the limits are counted on)
+let recentTx = [];  // the last 30 days (the list of latest spending: at the start of a month it would otherwise be empty)
 let budgetReady = true;   // false before the budgets migration
 async function loadBudget() {
   if (!user) { budgets = {}; monthTx = []; renderBudget(); return; }
   const [b, t] = await Promise.all([
     sb.from('budgets').select('category,monthly'),
-    sb.from('transactions').select('id,day,amount,category,note,external_id').gte('day', Budget.monthStart()).order('day', { ascending: false }).order('created_at', { ascending: false }).limit(500),
+    sb.from('transactions').select('id,day,amount,category,note,external_id').gte('day', shiftYmd(-30)).order('day', { ascending: false }).order('created_at', { ascending: false }).limit(500),
   ]);
   budgetReady = !b.error;
   budgets = Object.fromEntries((b.data || []).map((r) => [r.category, Number(r.monthly)]));
-  monthTx = (t.data || []).map((r) => ({ ...r, amount: Number(r.amount) }));
+  recentTx = (t.data || []).map((r) => ({ ...r, amount: Number(r.amount) }));
+  monthTx = recentTx.filter((r) => r.day >= Budget.monthStart());
   renderBudget();
 }
+const shiftYmd = (days) => { const d = new Date(); d.setDate(d.getDate() + days); return ymd(d); };
 const CAT_COLOR = { Groceries: 'var(--c-green)', 'Eating out': 'var(--c-orange)', Fuel: 'var(--c-yellow)', Transport: 'var(--c-sky)', Shopping: 'var(--c-pink)', Bills: 'var(--c-violet)', Health: 'var(--c-red)', Leisure: 'var(--c-blue)', Home: 'var(--c-lime)', Other: 'var(--text-3)' };
 function renderBudget() {
   const now = new Date(), s = Budget.summary(monthTx, budgets);
@@ -680,9 +683,9 @@ function renderBudget() {
     + (s.rows.length && s.unbudgeted ? `<li class="more">${eur(s.unbudgeted)} spent in categories without a limit</li>` : '')
     || '<li class="empty">Tap the + to give a category a monthly limit.</li>';
   // the latest spending, to check the sorting and to correct it
-  const spend = monthTx.filter((t) => t.amount < 0 && !Budget.NOT_SPENT.has(t.category)).slice(0, 12);
+  const spend = recentTx.filter((t) => t.amount < 0 && !Budget.NOT_SPENT.has(t.category)).slice(0, 12);
   $('rcList').innerHTML = spend.map((t) => `<li data-id="${esc(t.id)}" tabindex="0"><i style="background:${CAT_COLOR[Budget.SPEND.includes(t.category) ? t.category : 'Other']}"></i><div class="main"><b>${esc(t.note || t.category)}</b><small>${esc(t.day.slice(8))}/${esc(t.day.slice(5, 7))} · ${esc(Budget.SPEND.includes(t.category) ? t.category : 'Other')}${String(t.external_id || '').startsWith('quick:') ? ' · just paid, waiting for the bank' : ''}</small></div><span class="amt">${eur(t.amount)}</span></li>`).join('')
-    || '<li class="empty">Your spending this month shows here.</li>';
+    || '<li class="empty">Your latest spending shows here.</li>';
 }
 
 // one sheet for the three things you do: set a limit, log a payment, change a category
@@ -721,7 +724,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeBudge
 $('bgAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } openBudgetSheet('limit'); });
 $('payAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } openBudgetSheet('pay'); });
 $('bgList').addEventListener('click', (e) => { const li = e.target.closest('li[data-cat]'); if (li) openBudgetSheet('limit', { category: li.dataset.cat }); });
-$('rcList').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); const row = li && monthTx.find((t) => t.id === li.dataset.id); if (row) openBudgetSheet('recat', { row, category: Budget.SPEND.includes(row.category) ? row.category : '' }); });
+$('rcList').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); const row = li && recentTx.find((t) => t.id === li.dataset.id); if (row) openBudgetSheet('recat', { row, category: Budget.SPEND.includes(row.category) ? row.category : '' }); });
 $('bform').addEventListener('submit', async (e) => {
   e.preventDefault();
   const category = $('bCat').value;
@@ -731,8 +734,8 @@ $('bform').addEventListener('submit', async (e) => {
   if (bMode === 'recat') {
     const key = Budget.merchantKey(bPick.note || '');
     if (key) ({ error } = await sb.from('merchant_categories').upsert({ user_id: user.id, merchant: key, category }, { onConflict: 'user_id,merchant' }));
-    // this month's payments of that merchant move now; the next sync does the same for the rest
-    for (const t of monthTx.filter((t) => t.id === bPick.id || (key && Budget.merchantKey(t.note || '') === key))) if (!error) ({ error } = await sb.from('transactions').update({ category }).eq('id', t.id));
+    // the last 30 days' payments of that merchant move now; the next sync does the same for the rest
+    for (const t of recentTx.filter((t) => t.id === bPick.id || (key && Budget.merchantKey(t.note || '') === key))) if (!error) ({ error } = await sb.from('transactions').update({ category }).eq('id', t.id));
   } else {
     const amount = parseMoney($('bAmt').value);
     if (amount === null || !(amount > 0)) { $('bErr').textContent = 'Type an amount like 120 or 42.50'; $('bSave').disabled = false; return; }
