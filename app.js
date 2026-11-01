@@ -232,6 +232,7 @@ $('accForm').addEventListener('submit', async (e) => {
 
 // ---- the balance: the total is the last day of balance_history, which the database keeps up to date
 let link = null;   // the connected bank (a bank_links row), or null
+let shared = [];   // the accounts the bank shared (bank_accounts rows that came from the link)
 async function load(animate) {
   const [a, h, l] = await Promise.all([
     sb.from('bank_accounts').select('*').order('created_at'),   // (all columns: works before and after the account-kind migration)
@@ -245,6 +246,8 @@ async function load(animate) {
   const history = h.data.map((x) => Number(x.balance));
   const before = data.balance, had = !!data.fromCache;   // had: the saved balance was already on screen
   // current accounts make up the balance; livrets, investment accounts and loans from the bank are listed on the Wealth tab
+  shared = a.data.filter((x) => x.bank_link_id);
+  renderBank();
   const cash = a.data.filter((x) => !x.kind || x.kind === 'cash');
   bankAssets = a.data.filter((x) => x.kind && x.kind !== 'cash').map((x) => ({ id: 'bank:' + x.id, kind: x.kind, name: x.name, invested: 0, value: Math.abs(Number(x.balance) || 0), since: null, fromBank: true }));
   data = { accounts: cash.length, accountId: cash[0] && cash[0].id, balance: history.length ? history[history.length - 1] : 0, history: history.length > 1 ? history : [history[0] || 0, history[0] || 0], loaded: true };
@@ -354,6 +357,10 @@ function renderBank() {
     $('bankText').innerHTML = `${esc(link.bank_name)}${small(bankNote || (link.last_error ? 'The last sync failed, try again' : `${link.synced_at ? 'Synced ' + ago(link.synced_at) : 'Syncing...'} · approved until ${until}`), !!link.last_error || bankBad)}`;
     $('bankBtn').textContent = 'Disconnect'; $('bankBtn').classList.remove('primary'); $('bankForm').hidden = true;
   }
+  // which accounts the bank shared: if a livret is missing here, the bank did not share it (tick it at the bank and share again)
+  const KIND = { cash: 'current', savings: 'savings', investment: 'investment', debt: 'loan' };
+  $('bankMore').hidden = !link || expired;
+  $('bankMore').textContent = shared.length ? `Shared: ${shared.map((x) => `${x.iban_hint ? '····' + x.iban_hint + ' ' : ''}${KIND[x.kind || 'cash']}`).join(', ')}. Share more accounts` : 'Share more accounts';
 }
 // asks the function to read the bank (it keeps its own pace: banks only allow a few reads a day); true when something was read
 async function bankSync(force) {
@@ -393,6 +400,7 @@ $('bankBtn').addEventListener('click', async () => {
 });
 window.addEventListener('pageshow', (e) => { if (e.persisted && bankBusy) { bankBusy = false; bankNote = ''; renderBank(); } });   // back from the bank's page without finishing
 $('bankForm').addEventListener('submit', (e) => { e.preventDefault(); if ($('bankSel').value) bankConnect($('bankSel').value); });
+$('bankMore').addEventListener('click', () => { if (link && confirm('You will go back to your bank to choose the accounts to share. Tick every account you want here, including your livrets.')) bankConnect(link.bank_name); });
 $('bankSync').addEventListener('click', async () => { bankNote = ''; bankBad = false; if (await bankSync(true)) await load(false); });
 
 // ---- the Wealth tab: net worth, investments with their returns, and the growth calculator (the arithmetic is in wealth.js)
