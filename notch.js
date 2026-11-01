@@ -26,6 +26,10 @@ function notchPath(g, u, second) {
   return `path('M ${r} 0 ${body} A ${r} ${r} 0 0 1 ${r} 0 Z')`;
 }
 const notchState = new WeakMap();
+// On a phone every frame of the springs repaints a clipped card on the main thread, which is what makes it stutter: step them at 30 fps
+// (an even pace reads smoother than an uneven 60), and let the blob rest while any spring runs (window.notchBusy).
+const NOTCH_HALF = matchMedia('(pointer: coarse)').matches;
+window.notchBusy = 0;
 function notchRender(el) {
   const n = notchState.get(el);
   if (!n || !n.g) return;
@@ -42,19 +46,20 @@ function notchRender(el) {
 }
 function notchStep(el) {
   const n = notchState.get(el);
-  let last = performance.now();
+  let last = performance.now(), skip = false;
   const tick = (now) => {
+    if (NOTCH_HALF && (skip = !skip)) { n.raf = requestAnimationFrame(tick); return; }
     let dt = Math.min((now - last) / 1000, 0.05) * NOTCH_SPEED; last = now;
     for (; dt > 0; dt -= 1 / 240) {                            // small fixed steps keep the spring stable
       const h = Math.min(dt, 1 / 240);
       n.v += (-NOTCH_SPRING.k * (n.u - n.target) - (n.target ? NOTCH_SPRING.c : 2 * Math.sqrt(NOTCH_SPRING.k)) * n.v) * h;
       n.u = Math.max(0, n.u + n.v * h);
     }
-    if (Math.abs(n.u - n.target) < 0.0015 && Math.abs(n.v) < 0.01) { n.u = n.target; n.v = 0; n.raf = 0; notchRender(el); return; }
+    if (Math.abs(n.u - n.target) < 0.0015 && Math.abs(n.v) < 0.01) { n.u = n.target; n.v = 0; n.raf = 0; window.notchBusy--; notchRender(el); return; }
     notchRender(el);
     n.raf = requestAnimationFrame(tick);
   };
-  if (!n.raf) n.raf = requestAnimationFrame(tick);
+  if (!n.raf) { window.notchBusy++; n.raf = requestAnimationFrame(tick); }
 }
 function notchSet(el, open) {
   const n = notchState.get(el);

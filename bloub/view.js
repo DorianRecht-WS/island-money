@@ -53,7 +53,7 @@ export function createBlob(host, opts = {}) {
   // Everyday frame on the canvas. The eyes are holes in the body, but the paper behind it is the same black as the pill,
   // so painting them in that black on top looks identical (and anything past the edge is invisible, as it should be).
   function drawCanvas(fr) {
-    const dpr = window.devicePixelRatio || 1, w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
     if (!w || !h) return;
     if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
     const s = w / (VB * 2);
@@ -179,7 +179,7 @@ export function createBlob(host, opts = {}) {
   function tick(ms) {
     raf = requestAnimationFrame(tick);
     const quick = clock - lastBeat < 0.9 || clock < busyUntil || clock - turnAt < turnFor || focusPt || timer || (pointer && clock - pointerAt < 0.6);
-    if (!quick && ms - drawnAt < 28) return;
+    if (!quick && (ms - drawnAt < 28 || window.notchBusy > 0)) return;
     drawnAt = ms;
     clock += last ? Math.min((ms - last) / 1000, 0.064) : 0;
     last = ms;
