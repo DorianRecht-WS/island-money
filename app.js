@@ -43,7 +43,7 @@ const blobCall = (f) => { if (mb) f(mb); };
 function mood(expression, back, ms) { blobCall((b) => b.setExpression(expression)); if (back) setTimeout(() => blobCall((b) => b.setExpression(back)), ms); }
 function paintBlob() {
   const cs = getComputedStyle(document.documentElement);
-  blobCall((b) => b.setColors(cs.getPropertyValue('--blob-ink').trim(), cs.getPropertyValue('--bg').trim()));
+  blobCall((b) => b.setColors(cs.getPropertyValue('--blob-ink').trim(), getComputedStyle($('mBal'), '::before').backgroundColor));
 }
 const loadBlob = (tries = 3) => import('./bloub/view.js').then(({ createBlob }) => {
   mb = createBlob($('mBlob'), { color: 'creme', paper: '#000000', facing: 'right' });

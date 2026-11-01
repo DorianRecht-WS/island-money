@@ -33,6 +33,11 @@
     for (const [k, v] of Object.entries(BASE)) dark ? root.style.setProperty(k, v) : root.style.removeProperty(k);
     root.style.setProperty('--accent', p.a[dark ? 0 : 1]);
     root.style.setProperty('--accent-2', p.b[dark ? 0 : 1]);
+    // dark: the cards take a tint of the chosen colour, otherwise they melt into the near-black page and nothing can be seen
+    if (dark) {
+      const tint = (pc) => `color-mix(in srgb, ${p.a[0]} ${pc}%, #0a0a10)`;
+      root.style.setProperty('--card', tint(20)); root.style.setProperty('--card-line', tint(30)); root.style.setProperty('--surface', tint(26)); root.style.setProperty('--surface-2', tint(34));
+    }
     for (const [k, v] of Object.entries(HUES)) root.style.setProperty('--c-' + k, v[dark ? 0 : 1]);
     for (const f of listeners) f(r);
   }
