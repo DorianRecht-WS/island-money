@@ -4,7 +4,7 @@
 (() => {
   const KEY = 'island.settings';
   const BASE = { // the shared dark base (near-black, a hint of blue)
-    '--bg': '#08080d', '--card': '#101017', '--card-line': '#1a1a24', '--surface': '#14141c', '--surface-2': '#1c1c27', '--line': '#14141c', '--line-2': '#2a2b3a',
+    '--bg': '#08080d', '--card': '#1c1c27', '--card-line': '#262634', '--surface': '#232330', '--surface-2': '#2b2b3b', '--line': '#14141c', '--line-2': '#2a2b3a',
     '--text-hi': '#ffffff', '--text': '#eceef4', '--text-2': '#b4b8c8', '--text-3': '#7b8094', '--text-4': '#50546a',
   };
   // a / b: the two accents, each [on dark, on light]
@@ -33,11 +33,6 @@
     for (const [k, v] of Object.entries(BASE)) dark ? root.style.setProperty(k, v) : root.style.removeProperty(k);
     root.style.setProperty('--accent', p.a[dark ? 0 : 1]);
     root.style.setProperty('--accent-2', p.b[dark ? 0 : 1]);
-    // dark: the cards take a tint of the chosen colour, otherwise they melt into the near-black page and nothing can be seen
-    if (dark) {
-      const tint = (pc) => `color-mix(in srgb, ${p.a[0]} ${pc}%, #0a0a10)`;
-      root.style.setProperty('--card', tint(20)); root.style.setProperty('--card-line', tint(30)); root.style.setProperty('--surface', tint(26)); root.style.setProperty('--surface-2', tint(34));
-    }
     for (const [k, v] of Object.entries(HUES)) root.style.setProperty('--c-' + k, v[dark ? 0 : 1]);
     for (const f of listeners) f(r);
   }
