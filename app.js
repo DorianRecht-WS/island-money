@@ -63,6 +63,12 @@ const blobRuns = () => { if (mb) { if (tab === 'money' && !document.hidden) mb.s
 document.addEventListener('visibilitychange', () => { blobRuns(); lockBlobRuns(); });
 
 // ---- the island's entrance: things rise in turn, the blob pops in, the number counts up, the line draws itself
+// a screen coming out of its skeleton: every card rises in, one after another, and what is inside fades in just behind it
+const revealIn = (cards, delay = 30, gap = 70) => {
+  rise(cards, delay, gap);
+  if (reduced) return;
+  cards.filter(Boolean).forEach((c, i) => [...c.children].filter((x) => x.tagName !== 'I').forEach((x) => x.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 520, delay: delay + 120 + i * gap, easing: 'ease-out', fill: 'backwards' })));
+};
 const rise = (els, delay = 0, gap = 55) => { if (!reduced) els.filter(Boolean).forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 560, delay: delay + i * gap, easing: RISE, fill: 'backwards' })); };
 const blobEntrance = (host) => host.animate([{ opacity: 0, transform: 'translateY(22px) scale(.55)' }, { opacity: 1, transform: 'translateY(-4px) scale(1.07)', offset: .62 }, { opacity: 1, transform: 'none' }], { duration: 680, easing: RISE });
 function countUp(el, to, dur = 1000, delay = 0, from = 0) {
@@ -90,7 +96,7 @@ const notchIn = (root) => { if (!reduced && window.notchReplay) root.querySelect
 function enter(view, withNotch = false) {
   if (withNotch) notchIn($('v-' + view));
   if (view === 'money') {
-    rise([$('mBal'), $('mChart')], 30, 80);
+    revealIn([$('mBal'), $('mNw'), $('gwCard'), $('mChart')]);
     if (mb) blobEntrance($('mBlob'));
     countUp($('mBalance'), data.balance, 1000, 200); drawIn();
   } else if (view === 'goals') { goalsIntro = true; renderGoals(); }   // the cards rise in (and spring open) as they are drawn
@@ -300,7 +306,7 @@ function render(animate) {
   $('mBalance').title = user ? 'Click to change' : 'Sign in';
   if (!user && !pending) { $('mBalance').textContent = '€-'; say('Tap here to sign in'); drawChart(); return; }
   if (!animate) $('mBalance').textContent = eur(data.balance);
-  say(link ? (pendingAdj ? `Includes ${signed(pendingAdj)} not yet in your bank's data` : '') : data.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
+  say(link ? [link.bank_name, link.synced_at ? 'synced ' + ago(link.synced_at) : 'syncing...', pendingAdj ? `includes ${signed(pendingAdj)} not yet in your bank's data` : ''].filter(Boolean).join(' · ') : data.accounts ? 'Entered by hand · tap the amount to change it' : 'Tap the amount to set your balance');
   drawChart();
   if (animate) introWanted = true;
   syncLoading();
