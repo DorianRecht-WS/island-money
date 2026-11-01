@@ -1,0 +1,11 @@
+/* The privacy and terms pages: plain reading pages in the island's colours (tokens come from island.css and theme.js). */
+html, body.legal { height: auto; overflow: auto; background: var(--page, var(--bg)); user-select: text; }
+body.legal { color: var(--text); font: 15px/1.6 var(--font); padding: 24px 16px 64px; }
+body.legal main { max-width: 640px; margin: 0 auto; background: var(--card); border-radius: 18px; padding: 24px 22px 28px; }
+body.legal h1 { font-size: 26px; color: var(--text-hi); margin: 12px 0 2px; letter-spacing: -.02em; }
+body.legal h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); margin: 26px 0 6px; font-weight: 600; }
+body.legal p, body.legal li { color: var(--text-2); margin: 8px 0; }
+body.legal ul { padding-left: 20px; margin: 6px 0; }
+body.legal b { color: var(--text-hi); font-weight: 600; }
+body.legal a { color: var(--accent); }
+body.legal .muted { color: var(--text-4); font-size: 13px; }

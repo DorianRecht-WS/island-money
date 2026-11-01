@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Island Money: Privacy</title>
+<script src="theme.js"></script>
+<link rel="stylesheet" href="island.css?v=4">
+<link rel="stylesheet" href="legal.css">
+</head>
+<body class="legal">
+<main>
+  <p><a href="./">&larr; Island Money</a></p>
+  <h1>Privacy policy</h1>
+  <p class="muted">Last updated: 1 November 2026</p>
+
+  <p>Island Money is a small personal project that shows your balance in the look of the Dynamic Island desktop widget. This page says what it
+  does with your data. It is written in plain words on purpose.</p>
+
+  <h2>What the app stores</h2>
+  <ul>
+    <li><b>Your email address</b>, to sign you in with a one-time code. There are no passwords.</li>
+    <li><b>Your balance and transactions</b>: typed in by you, or read from your bank if you connect it.</li>
+    <li><b>Bank connection details</b>: the name of your bank, the identifier of the consent given to Enable Banking and its end date,
+    the identifier and the last four characters of the IBAN of each account. Never your bank login, password or card numbers: you sign
+    in on your bank's own page and the app never sees those.</li>
+    <li><b>On your device</b>: the last balance shown (so the app opens fast), your theme and palette choice, and your sign-in session.
+    You can erase them by signing out or clearing the site data.</li>
+  </ul>
+
+  <h2>Who handles it</h2>
+  <ul>
+    <li><b>Supabase</b> hosts the database and the sign-in. The data is protected so that each user can only read their own rows.</li>
+    <li><b>Enable Banking</b> is the regulated service (open banking, PSD2) that reads your bank account with your consent, only if you
+    connect a bank. Their policy applies to what they do.</li>
+    <li><b>GitHub Pages</b> serves the web page, and <b>jsDelivr</b> serves one script library; like any web server they see your IP address.</li>
+  </ul>
+  <p>Your data is not sold, not used for advertising and not shared with anyone else.</p>
+
+  <h2>What it is used for</h2>
+  <p>Only to show you your own balance and history in the app and in the Dynamic Island widget on your computer.</p>
+
+  <h2>Your choices</h2>
+  <ul>
+    <li><b>Disconnect your bank</b> in Settings: its accounts and transactions are deleted from the app, and the consent is cancelled at Enable Banking.</li>
+    <li><b>Withdraw the consent</b> at any time in your bank's own app, which stops all access to your account.</li>
+    <li><b>Ask for your data to be exported or deleted</b> through the contact below.</li>
+  </ul>
+
+  <h2>How long it is kept</h2>
+  <p>Until you disconnect the bank or ask for the account to be deleted. Bank access also ends on its own when the consent runs out
+  (usually 90 to 180 days) unless you renew it.</p>
+
+  <h2>Contact</h2>
+  <p>Open an issue on <a href="https://github.com/DorianRecht-WS/island-money/issues">github.com/DorianRecht-WS/island-money</a> and say that
+  you have a privacy question, without writing personal details there (issues are public). A private way to reach the maintainer will be
+  given in reply.</p>
+</main>
+</body>
+</html>
