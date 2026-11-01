@@ -2,7 +2,7 @@
 // once, and the old copy is only the fallback when you are offline); the scripts, styles, icons and the Supabase library are answered
 // from the cache straight away and refreshed in the background. Their addresses carry ?v=N, so bump N in index.html when one changes.
 // Never cached: the Supabase API (your data).
-const CACHE = 'island-money-v5';
+const CACHE = 'island-money-v6';
 const CACHED_HOSTS = [self.location.host, 'cdn.jsdelivr.net'];
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -26,8 +26,10 @@ self.addEventListener('fetch', (e) => {
         }
         return res;
       }).catch(() => hit);
-      e.waitUntil(net);
-      return hit || net;
+      e.waitUntil(net.catch(() => {}));
+      if (!hit) return net;
+      // the saved page wins only when the network is slow (over a second): otherwise an update shows on the first open, not the second
+      return Promise.race([net.catch(() => hit), new Promise((r) => setTimeout(() => r(hit), 1200))]);
     }));
     return;
   }

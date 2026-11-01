@@ -957,5 +957,5 @@ if (bankReturn) showTab('settings');   // coming back from the bank: show the re
 sizeChart();
 sb.auth.onAuthStateChange((_event, session) => onSession(session));
 sb.auth.getSession().then(({ data: d }) => onSession(d.session));
-if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data === 'updated' && performance.now() < 10000) location.reload(); });   // a newer page arrived while this one was still opening
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data === 'updated' && performance.now() < 20000) location.reload(); });   // a newer page arrived while this one was still opening
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { /* the app works without it */ });
