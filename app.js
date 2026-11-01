@@ -89,7 +89,7 @@ function enter(view, withNotch = false) {
     rise([$('mBal'), $('mChart')], 30, 80);
     if (mb) blobEntrance($('mBlob'));
     countUp($('mBalance'), data.balance, 1000, 200); drawIn();
-  } else if (view === 'goals') rise([...$('goalList').children], 30);
+  } else if (view === 'goals') { goalsIntro = true; renderGoals(); }   // the cards rise in (and spring open) as they are drawn
   else if (view === 'wealth') rise([$('nwCard'), $('invCard'), $('projCard')], 30, 80);
   else rise([...document.querySelectorAll('#v-settings .group')], 30, 70);
 }
@@ -661,7 +661,7 @@ $('lockSw').addEventListener('click', async () => {
 const GOAL_NAMES = ['Holiday', 'Emergency fund', 'New phone', 'Car', 'Home deposit', 'Wedding', 'Education', 'Gift', 'Other'];
 const GOAL_HUES = ['var(--c-sky)', 'var(--c-pink)', 'var(--c-green)', 'var(--c-orange)', 'var(--c-violet)', 'var(--c-yellow)', 'var(--c-blue)', 'var(--c-red)', 'var(--c-lime)'];
 const OVER = 'over:';   // an "is over" goal keeps what it watches in its source, as over:balance, over:networth, over:savings, over:investments or over:<item id>
-let goals = [], goalsReady = true, goalDraft = null; const goalFlipped = new Set();   // ids of the goals turned over to show their details
+let goals = [], goalsReady = true, goalDraft = null, goalsIntro = false; const goalFlipped = new Set();   // ids of the goals turned over to show their details
    // goalDraft: the goal being added or edited
 const monthYear = (d) => d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 const isOver = (g) => String(g.source || '').startsWith(OVER);
@@ -670,8 +670,9 @@ async function loadGoals() {
   if (!user) { goals = []; renderGoals(); return; }
   const r = await sb.from('goals').select('*').order('created_at');
   goalsReady = !r.error;
-  goals = (r.data || []).map((g) => ({ ...g, target: Number(g.target), saved: Number(g.saved), monthly: Number(g.monthly) }));
-  renderGoals();
+  const next = (r.data || []).map((g) => ({ ...g, target: Number(g.target), saved: Number(g.saved), monthly: Number(g.monthly) }));
+  if (JSON.stringify(next) === JSON.stringify(goals) && goalsIntro === false) { goals = next; return; }   // nothing changed: do not rebuild the cards
+  goals = next; renderGoals();
 }
 // what an "is over" goal can watch, what each is worth now, and the yearly rate it earns
 function overTargets() {
@@ -737,6 +738,7 @@ function renderGoals() {
     </li>`;
   }).join('') || `<li class="empty">${user ? (goalsReady ? 'Tap the + to add something you are saving for.' : 'Needs the database update.') : 'Sign in to add your goals.'}</li>`;
   for (const li of $('goalList').querySelectorAll('li.notch')) notchAttach(li);
+  if (goalsIntro && tab === 'goals') { goalsIntro = false; rise([...$('goalList').children], 30); notchIn($('goalList')); }
 }
 
 // ---- the add / edit sheet
