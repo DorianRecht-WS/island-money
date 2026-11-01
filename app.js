@@ -370,14 +370,14 @@ function renderBank() {
     $('bankBtn').textContent = 'Disconnect'; $('bankBtn').classList.remove('primary'); $('bankForm').hidden = true;
   }
   // which balance is shown: the one after all operations if the bank gives it; the others are listed so you can compare with your bank's app
-  const BAL = { XPCD: 'expected (after pending operations)', 'BOOKED+PENDING': 'booked plus the pending operations', ITBD: 'booked', CLBD: 'booked at day end', OPBD: 'opening', CLAV: 'available', ITAV: 'available now' };
+  const BAL = { XPCD: 'expected (after pending operations)', 'BOOKED+PENDING': 'booked plus the pending operations', 'CLBD+LATER': 'day-end balance plus the operations since', ITBD: 'booked', CLBD: 'booked at day end', OPBD: 'opening', CLAV: 'available', ITAV: 'available now' };
   const cashBal = lastBal.find((d) => d.kind === 'cash') || lastBal[0];
   $('bankBal').hidden = !link || expired || !cashBal;
   if (cashBal) {
     const others = cashBal.balances.filter((b) => b.type !== cashBal.used), p = cashBal.pending || { count: 0, sum: 0 };
     $('bankBal').textContent = `Your balance (${eur(cashBal.amount)}) is the ${BAL[cashBal.used] || cashBal.used} one. ` +
       (p.count ? `It counts ${p.count} pending operation${p.count > 1 ? 's' : ''} (${signed(p.sum)}). ` : `Your bank lists no pending operations${cashBal.statuses && Object.keys(cashBal.statuses).length ? ' (it sent: ' + Object.entries(cashBal.statuses).map(([k, v]) => v + ' ' + k.toLowerCase()).join(', ') + ')' : ''}, so purchases still on their way are not in it. Tap your balance and type what your bank shows after them: it is kept until your bank's balance moves. `) +
-      (others.length ? 'Your bank also gives: ' + others.map((b) => `${BAL[b.type] || b.type} ${eur(b.amount)}`).join(', ') + '.' : '');
+      (others.length ? 'Your bank also gives: ' + others.map((b) => `${BAL[b.type] || b.type} ${eur(b.amount)}${b.date ? ' as of ' + b.date : ''}`).join(', ') + '.' : '');
   }
   // which accounts the bank shared: if a livret is missing here, the bank did not share it (tick it at the bank and share again)
   const KIND = { cash: 'current', savings: 'savings', investment: 'investment', debt: 'loan' };
