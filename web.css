@@ -84,7 +84,7 @@ body.loading #mbNote.sk { min-width: 90px; min-height: 12px; }
 /* a phone: the app fills the screen, no panel */
 @media (max-width: 560px) {
   body { padding: 0; }
-  #pill { width: 100%; height: 100% !important; border-radius: 0; box-shadow: none; border: 0; }
+  #pill, #pill.open { width: 100%; height: 100% !important; border-radius: 0; box-shadow: none; border: 0; }   /* #pill.open: the island's own rule gives the open pill its 22px corners */
   #appbar { padding-top: calc(14px + env(safe-area-inset-top)); }
   #views { padding-left: var(--sp-3); padding-right: var(--sp-3); }
   #mBal #mBlob { width: 100px; height: 100px; }
