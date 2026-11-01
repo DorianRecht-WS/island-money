@@ -217,17 +217,22 @@
   <form id="gform" class="sheetpanel" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="gTitle">
     <div class="grab" aria-hidden="true"></div>
     <div class="shhead"><b id="gTitle">New goal</b><button type="button" id="gX" class="shx" aria-label="Close">&times;</button></div>
-    <div class="shgroup">
+    <div class="seg" id="gMode" role="group" aria-label="Kind of goal"><button type="button" data-m="save" class="on">Save up</button><button type="button" data-m="over">Account is over</button></div>
+    <div class="shgroup" id="gOverGroup" hidden>
+      <div class="srow"><span>Account</span><b id="gOverShow" class="shval">Current account</b></div>
+      <div class="opts" id="gOverAccts" role="listbox" aria-label="Account"></div>
+    </div>
+    <div class="shgroup" id="gNameGroup">
       <div class="srow"><span>Goal</span><b id="gNameShow" class="shval none">Choose one</b></div>
       <div class="opts" id="gNames" role="listbox" aria-label="Goal"></div>
     </div>
-    <div class="amtbox"><span class="k">I want to reach</span><div class="amtin"><i>&euro;</i><input id="gTarget" inputmode="decimal" maxlength="12" placeholder="0" aria-label="Amount to reach in euros"></div></div>
-    <div class="shgroup">
+    <div class="amtbox"><span class="k" id="gAmtLabel">I want to reach</span><div class="amtin"><i>&euro;</i><input id="gTarget" inputmode="decimal" maxlength="12" placeholder="0" aria-label="Amount to reach in euros"></div></div>
+    <div class="shgroup" id="gSourceGroup">
       <div class="srow"><span>Counts</span><b class="shval">What you have set aside</b></div>
       <div class="opts" id="gSources" role="listbox" aria-label="What counts toward the goal"></div>
       <label class="srow" id="gSavedRow"><span>Saved so far</span><input id="gSaved" inputmode="decimal" maxlength="12" placeholder="0 &euro;"></label>
     </div>
-    <div class="shgroup">
+    <div class="shgroup" id="gExtraGroup">
       <label class="srow"><span>Saving each month<small>Optional</small></span><input id="gMonthly" inputmode="decimal" maxlength="12" placeholder="0 &euro;"></label>
       <label class="srow"><span>Deadline<small>Optional</small></span><input id="gDeadline" type="date"></label>
     </div>
@@ -247,10 +252,10 @@
 <script defer src="config.js"></script>
 <script defer src="icons.js"></script>
 <script defer src="notch.js?v=6"></script>
-<script defer src="goals.js?v=1"></script>
+<script defer src="goals.js?v=2"></script>
 <script defer src="wealth.js?v=3"></script>
 <script defer src="lock.js?v=4"></script>
 <script defer src="keypad.js?v=4"></script>
-<script defer src="app.js?v=39"></script>
+<script defer src="app.js?v=40"></script>
 </body>
 </html>

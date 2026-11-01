@@ -36,6 +36,10 @@ const Goals = (() => {
     }
     return { saved: Number(g.saved) || 0, rate: 0, found: true };
   }
-  return { r2, addMonths, plan, source };
+  // "account is over value": how far along it is, whether it is over already, and by how much (or how much is missing)
+  function over(now, target) {
+    return { pct: target > 0 ? Math.max(0, Math.min(1, now / target)) : 0, reached: now >= target, diff: r2(Math.abs(now - target)) };
+  }
+  return { r2, addMonths, plan, source, over };
 })();
 if (typeof module !== 'undefined') module.exports = Goals; else window.Goals = Goals;

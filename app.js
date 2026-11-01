@@ -656,11 +656,14 @@ $('lockSw').addEventListener('click', async () => {
   $('lockSw').disabled = false;
 });
 
-// ---- the Goals tab: what you are saving for, how far along it is, and when it will be reached (the arithmetic is in goals.js)
+// ---- the Goals tab: what you are saving for, how far along it is, and when it will be reached (the arithmetic is in goals.js).
+// Two kinds: "save up" (a named goal, with what counts toward it) and "account is over value" (watch an account or a total reach a figure).
 const GOAL_NAMES = ['Holiday', 'Emergency fund', 'New phone', 'Car', 'Home deposit', 'Wedding', 'Education', 'Gift', 'Other'];
 const GOAL_HUES = ['var(--c-sky)', 'var(--c-pink)', 'var(--c-green)', 'var(--c-orange)', 'var(--c-violet)', 'var(--c-yellow)', 'var(--c-blue)', 'var(--c-red)', 'var(--c-lime)'];
+const OVER = 'over:';   // an "is over" goal keeps what it watches in its source, as over:balance, over:networth, over:savings, over:investments or over:<item id>
 let goals = [], goalsReady = true, goalDraft = null;   // goalDraft: the goal being added or edited
 const monthYear = (d) => d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+const isOver = (g) => String(g.source || '').startsWith(OVER);
 
 async function loadGoals() {
   if (!user) { goals = []; renderGoals(); return; }
@@ -669,7 +672,21 @@ async function loadGoals() {
   goals = (r.data || []).map((g) => ({ ...g, target: Number(g.target), saved: Number(g.saved), monthly: Number(g.monthly) }));
   renderGoals();
 }
+// what an "is over" goal can watch, and what each is worth now
+function overTargets() {
+  const all = allAssets(), t = Wealth.totals(data.balance, all);
+  const list = [{ key: 'balance', label: 'Current account', value: data.balance }, { key: 'networth', label: 'Net worth', value: t.net }, { key: 'savings', label: 'All my savings', value: t.sav }, { key: 'investments', label: 'All my investments', value: t.inv }];
+  for (const a of all) if (a.kind === 'savings' || a.kind === 'investment') list.push({ key: String(a.id), label: a.name, value: a.value });
+  return list;
+}
+// one row's worth of text and numbers, whichever kind it is
 function goalView(g) {
+  if (isOver(g)) {
+    const w = overTargets().find((x) => x.key === g.source.slice(OVER.length));
+    if (!w) return { title: 'Account gone', sub: `is over ${eur(g.target)}`, pct: 0, done: false, line: 'The account this goal watched is gone: edit the goal', right: '' };
+    const o = Goals.over(w.value, g.target);
+    return { title: w.label, sub: `is over ${eur(g.target)} · now ${eur(w.value)}`, pct: o.pct, done: o.reached, line: o.reached ? `Over by ${eur(o.diff)}` : `${eur(o.diff)} to go`, right: o.reached ? '✓' : `${Math.round(o.pct * 100)}%` };
+  }
   const src = Goals.source(g, allAssets()), deadline = g.deadline ? new Date(g.deadline + 'T12:00:00') : null;
   const p = Goals.plan({ saved: src.saved, target: g.target, monthly: g.monthly || 0, rate: src.rate, deadline });
   let line;
@@ -679,19 +696,21 @@ function goalView(g) {
     const when = p.reach ? `${eur(g.monthly || 0)}/month → ${monthYear(p.reach)}` : 'Add a monthly saving to see when';
     line = deadline ? `By ${monthYear(deadline)}: ${p.status === 'ontrack' ? 'on track' : `needs ${eur(p.need)}/month`}. ${p.reach ? when : ''}` : when;
   }
-  return { src, p, line };
+  return { title: g.name, sub: `${eur(src.saved)} of ${eur(g.target)} · ${Math.round(p.pct * 100)}%`, pct: p.pct, done: p.done, behind: p.status === 'behind', line, right: p.done ? '✓' : eur(p.remaining) + ' left' };
 }
 function renderGoals() {
   $('gTag').textContent = !user ? 'Signed out' : !goalsReady ? 'Needs the database update' : '';
   $('goalList').innerHTML = goals.map((g, i) => {
-    const { src, p, line } = goalView(g);
-    return `<li data-id="${esc(g.id)}" tabindex="0"><i style="background:${GOAL_HUES[i % GOAL_HUES.length]}"></i><div class="main"><b>${esc(g.name)}</b><small>${eur(src.saved)} of ${eur(g.target)} · ${Math.round(p.pct * 100)}%</small><div class="pbar ${p.done ? '' : p.status === 'behind' ? 'warn' : ''}"><i style="width:${Math.round(p.pct * 100)}%"></i></div><small class="gline ${p.done ? 'up' : p.status === 'behind' ? 'down' : ''}">${esc(line)}</small></div><span class="amt">${p.done ? '✓' : eur(p.remaining) + ' left'}</span></li>`;
+    const v = goalView(g), pct = Math.round(v.pct * 100);
+    return `<li data-id="${esc(g.id)}" tabindex="0"><i style="background:${GOAL_HUES[i % GOAL_HUES.length]}"></i><div class="main"><b>${esc(v.title)}</b><small>${esc(v.sub)}</small><div class="pbar ${v.done ? '' : v.behind ? 'warn' : ''}"><i style="width:${pct}%"></i></div><small class="gline ${v.done ? 'up' : v.behind ? 'down' : ''}">${esc(v.line)}</small></div><span class="amt">${esc(v.right)}</span></li>`;
   }).join('') || `<li class="empty">${user ? (goalsReady ? 'Tap the + to add something you are saving for.' : 'Needs the database update.') : 'Sign in to add your goals.'}</li>`;
 }
 
 // ---- the add / edit sheet
 function openGoalSheet(goal) {
-  goalDraft = goal ? { ...goal } : { name: '', target: 0, source: 'manual', saved: 0, monthly: 0, deadline: null };
+  const over = !!goal && isOver(goal);
+  goalDraft = goal ? { ...goal, mode: over ? 'over' : 'save', overKey: over ? goal.source.slice(OVER.length) : 'balance' } : { name: '', target: 0, source: 'manual', saved: 0, monthly: 0, deadline: null, mode: 'save', overKey: 'balance' };
+  if (over) goalDraft.source = 'manual';
   $('gsheet').hidden = false;
   $('gTitle').textContent = goal ? 'Edit goal' : 'New goal';
   $('gTarget').value = goalDraft.target ? String(goalDraft.target) : ''; $('gSaved').value = goalDraft.saved ? String(goalDraft.saved) : '';
@@ -701,16 +720,24 @@ function openGoalSheet(goal) {
   if (!reduced) { $('gform').animate([{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: 420, easing: RISE }); $('gsheetBg').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260 }); }
 }
 function renderGoalSheet() {
-  const d = goalDraft;
-  $('gNames').innerHTML = GOAL_NAMES.map((n) => `<button type="button" role="option" data-n="${esc(n)}" aria-selected="${n === d.name}"${n === d.name ? ' class="on"' : ''}>${esc(n)}</button>`).join('');
+  const d = goalDraft, over = d.mode === 'over';
+  for (const b of document.querySelectorAll('#gMode button')) b.classList.toggle('on', b.dataset.m === d.mode);
+  $('gNameGroup').hidden = over; $('gSourceGroup').hidden = over; $('gExtraGroup').hidden = over; $('gOverGroup').hidden = !over;
+  $('gAmtLabel').textContent = over ? 'Is over' : 'I want to reach';
+  const pill = (v, n, cur, attr) => `<button type="button" role="option" data-${attr}="${esc(v)}" aria-selected="${v === cur}"${v === cur ? ' class="on"' : ''}>${esc(n)}</button>`;
+  $('gNames').innerHTML = GOAL_NAMES.map((n) => pill(n, n, d.name, 'n')).join('');
   $('gNameShow').textContent = d.name || 'Choose one'; $('gNameShow').classList.toggle('none', !d.name);
   const items = allAssets().filter((a) => a.kind === 'savings' || a.kind === 'investment');
-  const opts = [['manual', 'Typed in'], ['savings', 'All my savings'], ['investments', 'All my investments'], ...items.map((a) => [String(a.id), a.name])];
-  $('gSources').innerHTML = opts.map(([v, n]) => `<button type="button" role="option" data-s="${esc(v)}" aria-selected="${v === d.source}"${v === d.source ? ' class="on"' : ''}>${esc(n)}</button>`).join('');
+  $('gSources').innerHTML = [['manual', 'Typed in'], ['savings', 'All my savings'], ['investments', 'All my investments'], ...items.map((a) => [String(a.id), a.name])].map(([v, n]) => pill(v, n, d.source, 's')).join('');
   $('gSavedRow').hidden = d.source !== 'manual';
+  const targets = overTargets();
+  $('gOverAccts').innerHTML = targets.map((t) => pill(t.key, t.label, d.overKey, 'k')).join('');
+  $('gOverShow').textContent = (targets.find((t) => t.key === d.overKey) || { label: 'Choose one' }).label;
 }
+$('gMode').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { goalDraft.mode = b.dataset.m; renderGoalSheet(); $('gErr').textContent = ''; } });
 $('gNames').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { goalDraft.name = b.dataset.n; renderGoalSheet(); $('gErr').textContent = ''; } });
 $('gSources').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { goalDraft.source = b.dataset.s; renderGoalSheet(); } });
+$('gOverAccts').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { goalDraft.overKey = b.dataset.k; renderGoalSheet(); } });
 function closeGoalSheet() {
   if ($('gsheet').hidden) return;
   goalDraft = null;
@@ -725,11 +752,19 @@ $('gX').addEventListener('click', closeGoalSheet);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGoalSheet(); });
 $('gform').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const d = goalDraft, target = parseMoney($('gTarget').value), saved = $('gSaved').value.trim() ? parseMoney($('gSaved').value) : 0, monthly = $('gMonthly').value.trim() ? parseMoney($('gMonthly').value) : 0;
-  if (!d.name) { $('gErr').textContent = 'Choose a name from the list'; return; }
-  if (target === null || !(target > 0)) { $('gErr').textContent = 'Type the amount you want to reach, like 3000'; return; }
-  if (saved === null || saved < 0 || monthly === null || monthly < 0) { $('gErr').textContent = 'Amounts must be positive numbers'; return; }
-  const row = { name: d.name, target, source: d.source, saved: d.source === 'manual' ? saved : 0, monthly, deadline: $('gDeadline').value || null };
+  const d = goalDraft, over = d.mode === 'over', target = parseMoney($('gTarget').value);
+  if (target === null || !(target > 0)) { $('gErr').textContent = over ? 'Type the value the account must go over, like 1000' : 'Type the amount you want to reach, like 3000'; return; }
+  let row;
+  if (over) {
+    const w = overTargets().find((x) => x.key === d.overKey);
+    if (!w) { $('gErr').textContent = 'Choose an account from the list'; return; }
+    row = { name: `${w.label} is over`.slice(0, 40), target, source: OVER + d.overKey, saved: 0, monthly: 0, deadline: null };
+  } else {
+    const saved = $('gSaved').value.trim() ? parseMoney($('gSaved').value) : 0, monthly = $('gMonthly').value.trim() ? parseMoney($('gMonthly').value) : 0;
+    if (!d.name) { $('gErr').textContent = 'Choose a name from the list'; return; }
+    if (saved === null || saved < 0 || monthly === null || monthly < 0) { $('gErr').textContent = 'Amounts must be positive numbers'; return; }
+    row = { name: d.name, target, source: d.source, saved: d.source === 'manual' ? saved : 0, monthly, deadline: $('gDeadline').value || null };
+  }
   $('gSave').disabled = true;
   const { error } = d.id ? await sb.from('goals').update(row).eq('id', d.id) : await sb.from('goals').insert({ ...row, user_id: user.id });
   $('gSave').disabled = false;
@@ -739,7 +774,7 @@ $('gform').addEventListener('submit', async (e) => {
 $('gCancel').addEventListener('click', async () => {
   const d = goalDraft;
   if (d && d.id) {
-    if (!confirm(`Delete the goal "${d.name}"?`)) return;
+    if (!confirm(`Delete this goal?`)) return;
     const { error } = await sb.from('goals').delete().eq('id', d.id);
     if (error) { $('gErr').textContent = fail(error); return; }
     closeGoalSheet(); await loadGoals();
