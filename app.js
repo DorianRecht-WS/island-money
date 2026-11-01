@@ -413,8 +413,7 @@ const allAssets = () => bankAssets.concat(assets.map((a) => ({ ...a, value: grow
 const KIND_COLOR = { cash: 'var(--accent)', investment: 'var(--accent-2)', savings: 'var(--ok)', property: 'var(--warn)', debt: 'var(--danger)' };
 const signed = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + eur(Math.abs(n));
 const pct = (x, digits = 1) => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x * 100).toFixed(digits) + '%';
-let editingAsset = null;
-let yourMix = null;   // the blended yearly rate of all savings and investments, in percent   // the asset being edited, or 'new'
+let editingAsset = null;   // the asset being edited, or 'new'
 
 function renderWealth() {
   const all = allAssets(), t = Wealth.totals(data.balance, all);
@@ -431,17 +430,12 @@ function renderWealth() {
   $('nwBar').innerHTML = parts.map((p) => `<i style="flex:${(p[2] / own).toFixed(4)};background:${KIND_COLOR[p[0]]}"></i>`).join('');
   $('nwLegend').innerHTML = parts.concat(t.debt ? [['debt', 'Debts', t.debt]] : []).map((p) => `<span><i style="background:${KIND_COLOR[p[0]]}"></i>${p[1]} ${eur(p[2])}</span>`).join('');
 
-  const g = Wealth.gain(t.invested, t.inv);
-  $('stIn').textContent = eur(t.invested); $('stNow').textContent = eur(t.inv);
-  $('stGain').textContent = g ? signed(g.amount) : '€0'; $('stGainK').textContent = g ? `Gain ${pct(g.pct)}` : 'Gain';
-  $('stGain').className = g ? (g.amount >= 0 ? 'up' : 'down') : '';
   $('assetList').innerHTML = all.map((a) => {
     const gn = a.kind === 'investment' ? Wealth.gain(a.invested, a.value) : null, yr = a.kind === 'investment' && a.since ? Wealth.yearly(a.invested, a.value, a.since) : null;
     const sub = gn ? `${pct(gn.pct)}${yr !== null ? ` · ${pct(yr)}/yr` : ''}` : a.fromBank ? `${Wealth.KINDS[a.kind]} · from your bank` : `${Wealth.KINDS[a.kind]}${a.rate ? ` · ${a.rate}%/yr` : ''}`;
     return `<li${a.fromBank ? ' class="bank"' : ` data-id="${esc(a.id)}" tabindex="0"`}><i style="background:${KIND_COLOR[a.kind]}"></i><div class="main"><b>${esc(a.name)}</b><small${gn ? ` class="${gn.amount >= 0 ? 'up' : 'down'}"` : ''}>${sub}</small></div><span class="amt">${a.kind === 'debt' ? '−' : ''}${eur(a.value)}${a.rate && a.kind !== 'debt' ? `<em class="rt"> + ${a.rate}%</em>` : ''}</span></li>`;
   }).join('') || '<li class="empty">Add an investment, a savings account, property or a debt to see your net worth.</li>';
   renderGrowth(all);
-  renderProjection();
 }
 
 // the yearly growth card: each account at its own rate, added up
@@ -449,18 +443,15 @@ function renderGrowth(all) {
   const g = Wealth.growth(all);
   $('gwAmount').textContent = user ? `${signed(g.perYear)} a year` : '€-';
   $('gwAmount').className = g.perYear < 0 ? 'down' : '';
-  $('gwNote').textContent = !user ? 'Sign in to see it' : g.items.length ? `${pct(g.pct)} on ${eur(g.base)} · about ${signed(Wealth.r2(g.perYear / 12))} a month` : 'Add a rate to your savings (or investments with a start date) to see it';
-  $('gwList').innerHTML = g.items.slice(0, 3).map((i) => `<li><i style="background:${KIND_COLOR[i.kind]}"></i><div class="main"><b>${esc(i.name)}</b><small>${(i.rate * 100).toFixed(2).replace(/0$/, '')}% on ${eur(i.value)} · ${i.from === 'rate' ? 'your rate' : 'return so far'}</small></div><span class="amt ${i.perYear >= 0 ? 'up' : 'down'}">${signed(i.perYear)}</span></li>`).join('') + (g.items.length > 3 ? `<li class="more">+${g.items.length - 3} more in Wealth</li>` : '');
-  $('gwFine').textContent = g.missing.length ? `Not counted, no rate yet: ${g.missing.join(', ')}. Add the rate in Wealth.` : (g.items.length ? 'An estimate from today’s rates: rates and markets change, and interest is not paid out evenly.' : '');
-  // the calculator can use this mix as its yearly return
-  yourMix = g.items.length ? Math.round(g.pct * 1000) / 10 : null;
+  $('gwPct').textContent = !user ? '' : g.items.length ? pct(g.pct) : 'add a rate to a saving';
+  $('gwPct').className = !g.items.length ? 'none' : g.pct < 0 ? 'down' : '';
 }
 
 // ---- adding and editing: tap a row to change what it is worth today
 function openAssetForm(a) {
   editingAsset = a || 'new';
-  $('assetForm').hidden = false; $('assetAdd').textContent = 'Close';
-  $('asName').value = a ? a.name : ''; $('asKind').value = a ? a.kind : 'investment';
+  $('assetForm').hidden = false; $('assetAdd').classList.add('open'); $('assetAdd').setAttribute('aria-label', 'Close the form');
+  $('asName').value = a ? a.name : ''; $('asKind').value = a ? a.kind : 'investment'; syncKind();
   $('asInvested').value = a ? String(a.invested) : ''; $('asValue').value = a ? String(grown(a)) : '';
   $('asRate').value = a && a.rate ? String(a.rate) : '';
   $('asSince').value = a ? a.since : ymd(new Date());
@@ -469,20 +460,27 @@ function openAssetForm(a) {
   renderRates(); loadRates();
   $('asName').focus();
 }
-function closeAssetForm() { editingAsset = null; $('assetForm').hidden = true; $('assetAdd').textContent = 'Add'; }
+function closeAssetForm() { editingAsset = null; $('assetForm').hidden = true; $('assetAdd').classList.remove('open'); $('assetAdd').setAttribute('aria-label', 'Add savings or an investment'); }
+// the type switch: the highlighted pill, "put in" only for an investment, and the rates that fit the type
+function syncKind() {
+  const kind = $('asKind').value;
+  for (const b of document.querySelectorAll('#asKindSeg button')) b.classList.toggle('on', b.dataset.k === kind);
+  $('asInvestedBox').hidden = kind !== 'investment';
+  renderRates();
+}
+$('asKindSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { $('asKind').value = b.dataset.k; syncKind(); } });
 $('mNw').addEventListener('click', () => showTab('wealth'));
 $('assetAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } $('assetForm').hidden ? openAssetForm(null) : closeAssetForm(); });
 $('assetList').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); if (li && user) openAssetForm(assets.find((a) => a.id === li.dataset.id)); });
 $('assetList').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const li = e.target.closest('li[data-id]'); if (li && user) openAssetForm(assets.find((a) => a.id === li.dataset.id)); } });
 $('asChips').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
-  $('asName').value = b.dataset.n; $('asKind').value = b.dataset.k; $('asKind').dispatchEvent(new Event('change'));
+  $('asName').value = b.dataset.n; $('asKind').value = b.dataset.k; syncKind();
   const known = rates && b.dataset.r && rates.savings.rates.find((r) => r.id === b.dataset.r);   // the official rate, when we have it
   $('asRate').value = known ? String(known.rate) : '';
   $('asValue').focus();
 });
 $('asRates').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) $('asRate').value = b.dataset.r; });
-$('asKind').addEventListener('change', () => { renderRates(); $('asInvested').placeholder = $('asKind').value === 'investment' ? 'Put in (€)' : 'Put in (optional)'; });
 $('assetForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const value = parseMoney($('asValue').value), invText = $('asInvested').value.trim(), invested = invText ? parseMoney(invText) : 0;
@@ -514,7 +512,7 @@ async function loadAssets() {
   renderWealth();
 }
 
-// ---- the rates card: what savings pay (set by the State) and how a few markets did, from the public `rates` function
+// ---- the rates: what savings pay (set by the State) and how a few markets did, from the public `rates` function; shown as buttons in the add form
 const RATES_API = `${url}/functions/v1/rates`, RATES_KEY = 'money.rates';
 let rates = null;
 try { const c = JSON.parse(localStorage.getItem(RATES_KEY)); if (c && c.body) rates = c.body; } catch { /* none saved */ }
@@ -533,14 +531,6 @@ function renderRates() {
   }
   wrap.innerHTML = list.map(([n, r]) => `<button type="button" data-r="${r}">${esc(n)} ${r}%</button>`).join('');
   $('asRatesNote').textContent = note;
-  // the calculator's one-tap rates
-  if (rates) {
-    const sel = [];
-    if (yourMix !== null) sel.push(['Your mix', yourMix]);
-    const la = rates.savings.rates.find((r) => r.id === 'livret-a'); if (la) sel.push(['Livret A', la.rate]);
-    const w = rates.markets.find((m) => m.id === 'world' && m.ret5y != null); if (w) sel.push(['MSCI World, 5y', Math.round(w.ret5y * 1000) / 10]);
-    $('pjChips').innerHTML = sel.map(([n, r]) => `<button type="button" data-r="${r}">${esc(n)} ${r}%</button>`).join('');
-  }
 }
 async function loadRates(force) {
   if (!force && rates && Date.now() - ratesAge() < 30 * 60 * 1000) { renderRates(); return; }
@@ -553,31 +543,6 @@ async function loadRates(force) {
     renderRates();
   } catch (e) { console.error(e); }   // no rates: the form just has no rate buttons
 }
-$('pjChips').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { $('pjRate').value = b.dataset.r; $('pjRate').dispatchEvent(new Event('input')); } });
-
-// ---- the growth calculator: what your investments and savings could become if you keep adding every month
-const PJ_KEY = 'money.projection';
-const pj = (() => { try { return { monthly: 200, rate: 6, years: 20, ...JSON.parse(localStorage.getItem(PJ_KEY)) }; } catch { return { monthly: 200, rate: 6, years: 20 }; } })();
-$('pjMonthly').value = pj.monthly; $('pjRate').value = pj.rate; $('pjYears').value = pj.years;
-function renderProjection() {
-  const t = Wealth.totals(data.balance, allAssets());
-  const monthly = parseMoney($('pjMonthly').value), rate = parseFloat(String($('pjRate').value).replace(',', '.')), years = parseInt($('pjYears').value, 10);
-  const ok = monthly !== null && monthly >= 0 && Number.isFinite(rate) && rate >= -50 && rate <= 100 && years >= 1 && years <= 60;
-  const svg = $('pjChart');
-  if (!ok) { $('pjTotal').textContent = '-'; $('pjSub').textContent = 'Check the three numbers'; svg.innerHTML = ''; return; }
-  try { localStorage.setItem(PJ_KEY, JSON.stringify({ monthly, rate, years })); } catch { /* not saved */ }
-  const start = t.inv + t.sav, pts = Wealth.project(start, monthly, rate, years), last = pts[pts.length - 1];
-  $('pjTotal').textContent = eur(last.value);
-  $('pjSub').textContent = `in ${years} year${years > 1 ? 's' : ''} · you put in ${eur(last.put)}, growth ${signed(Wealth.r2(last.value - last.put))}${start ? ` · from ${eur(start)} today` : ''}`;
-  const w = svg.clientWidth || 300, h = svg.clientHeight || 90, hi = Math.max(...pts.map((p) => p.value), 1), lo = Math.min(0, ...pts.map((p) => p.value));
-  const X = (i) => 4 + (i / years) * (w - 8), Y = (v) => 4 + (1 - (v - lo) / (hi - lo || 1)) * (h - 8);
-  const line = (key) => pts.map((p, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(p[key]).toFixed(1)}`).join(' ');
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  svg.innerHTML = `<defs><linearGradient id="pjgL" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent-2)"/></linearGradient><linearGradient id="pjgA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs><path d="${line('value')} L${X(years).toFixed(1)} ${h} L${X(0).toFixed(1)} ${h} Z" fill="url(#pjgA)"/><path d="${line('put')}" fill="none" stroke="var(--text-4)" stroke-width="1.6" stroke-dasharray="4 4" stroke-linecap="round"/><path d="${line('value')}" fill="none" stroke="url(#pjgL)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`;
-}
-for (const id of ['pjMonthly', 'pjRate', 'pjYears']) $(id).addEventListener('input', renderProjection);
-new ResizeObserver(() => renderProjection()).observe($('pjChart'));
-
 // ---- who is signed in
 function onSession(session) {
   const next = session ? session.user : null;

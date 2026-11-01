@@ -31,30 +31,11 @@ const Wealth = (() => {
     return (value / invested) ** (365.25 / days) - 1;
   }
 
-  // Growth with monthly compounding: start with `start`, add `monthly` every month, earn `ratePct` a year.
-  // Returns one point per year: what it is worth and what you put in.
-  function project(start, monthly, ratePct, years) {
-    const m = (1 + ratePct / 100) ** (1 / 12) - 1;
-    let v = start, put = start;
-    const pts = [{ year: 0, value: r2(v), put: r2(put) }];
-    for (let y = 1; y <= years; y++) {
-      for (let i = 0; i < 12; i++) { v = v * (1 + m) + monthly; put += monthly; }
-      pts.push({ year: y, value: r2(v), put: r2(put) });
-    }
-    return pts;
-  }
-
   // What a balance typed in on a given day is worth now if it earns ratePct a year (compounded daily, like a livret's interest builds up).
   function grow(value, ratePct, since, today = new Date()) {
     const days = (today - new Date(since)) / 864e5;
     if (!(ratePct > 0) || !(days > 0) || !Number.isFinite(days)) return r2(value);
     return r2(value * (1 + ratePct / 100) ** (days / 365.25));
-  }
-
-  // Annualised growth between two prices, over a number of days.
-  function annualised(from, to, days) {
-    if (!(from > 0) || !(to > 0) || !(days >= 30)) return null;
-    return (to / from) ** (365.25 / days) - 1;
   }
 
   // How much your savings and investments grow in a year, from the rate of each one: the rate you typed in, or for an investment
@@ -75,6 +56,6 @@ const Wealth = (() => {
     return { perYear: r2(perYear), base: r2(base), pct: base > 0 ? perYear / base : 0, items, missing };
   }
 
-  return { r2, KINDS, totals, gain, yearly, project, grow, annualised, growth };
+  return { r2, KINDS, totals, gain, yearly, grow, growth };
 })();
 if (typeof module !== 'undefined') module.exports = Wealth; else window.Wealth = Wealth;

@@ -72,7 +72,7 @@ const notchRO = new ResizeObserver((entries) => {
 // In the app the cards are always notched (a phone has no hover): they start open, and notchReplay springs one open again from closed
 // whenever its screen comes into view.
 function notchAttach(el) {
-  notchState.set(el, { g: null, u: 1, v: 0, target: 1, raf: 0, chip: el.querySelector(':scope > i > svg'), chip2: null });
+  notchState.set(el, { g: null, u: 1, v: 0, target: 1, raf: 0, chip: el.querySelector(':scope > i > svg'), chip2: el.querySelector(':scope > .mplus') });
   notchRO.observe(el);
 }
 function notchReplay(el) {

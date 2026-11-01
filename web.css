@@ -139,9 +139,6 @@ input { user-select: text; -webkit-user-select: text; }
 #nwLegend span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 #nwLegend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 #invCard .ch, #projCard .ch { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); padding-right: 34px; min-height: 28px; }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin: var(--sp-3) 0; }
-.stats div { background: var(--surface); border-radius: var(--r-3); padding: 8px 10px; min-width: 0; }
-.stats b { display: block; margin-top: 2px; font-size: 15px; color: var(--text-hi); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .up { color: var(--ok) !important; }
 .down { color: var(--danger) !important; }
 .alist { list-style: none; padding: 0; margin: 0; }
@@ -159,14 +156,6 @@ input { user-select: text; -webkit-user-select: text; }
 .aform .pillbtn { min-height: 44px; }
 .aform .err { color: var(--danger); font-size: var(--fs-meta); margin: 0; }
 .aform .err:empty { display: none; }
-.pin { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin-top: var(--sp-3); }
-.pin label { display: block; font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--text-4); font-weight: 500; }
-.pin .field { margin: 4px 0 0; font-size: 16px; min-height: 44px; text-align: center; }
-.pres { margin: var(--sp-3) 0 var(--sp-2); }
-#pjTotal { display: block; font-size: 30px; font-weight: 700; letter-spacing: -.02em; color: var(--text-hi); font-variant-numeric: tabular-nums; }
-#pjSub { display: block; font-size: var(--fs-meta); color: var(--text-3); margin-top: 2px; }
-#pjChart { display: block; width: 100%; height: 96px; overflow: visible; }
-.fine { display: block; margin-top: var(--sp-2); font-size: var(--fs-micro); color: var(--text-4); }
 body.out #nwBar, body.out #nwLegend { opacity: .3; }
 @media (max-width: 380px) { #nwAmount { font-size: 32px; } .stats b { font-size: 13px; } }
 
@@ -187,14 +176,53 @@ body.out #nwBar, body.out #nwLegend { opacity: .3; }
 
 #pjChips { margin-top: var(--sp-3); }
 
-/* the yearly growth card on the Money tab */
-#gwCard { padding: var(--sp-3) var(--sp-4); }
-#gwCard .k { display: block; }
-#gwAmount { display: block; margin: 2px 0 1px; font-size: 24px; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; color: var(--ok); font-variant-numeric: tabular-nums; }
-#gwAmount.down { color: var(--danger); }
-#gwNote { display: block; font-size: var(--fs-meta); color: var(--text-3); padding-right: 34px; }
-#gwList { margin-top: var(--sp-2); }
-#gwList li { min-height: 44px; padding: 8px 0; cursor: default; }
-#gwList li.more { color: var(--text-3); font-size: var(--fs-meta); min-height: 32px; display: block; }
 #asRates { margin-top: -2px; }
 .rt { font-style: normal; font-weight: 500; font-size: var(--fs-meta); color: var(--ok); }
+
+/* the yearly growth card: an amount and a percentage */
+#gwCard { padding: var(--sp-3) var(--sp-4); }
+#gwCard .k { display: block; }
+.gwrow { display: flex; align-items: baseline; gap: var(--sp-3); margin-top: 2px; padding-right: 34px; flex-wrap: wrap; }
+#gwAmount { font-size: 26px; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; color: var(--ok); font-variant-numeric: tabular-nums; }
+#gwAmount.down { color: var(--danger); }
+#gwPct { font-size: var(--fs-body); font-weight: 600; color: var(--ok); font-variant-numeric: tabular-nums; }
+#gwPct.down { color: var(--danger); }
+#gwPct.none { color: var(--text-3); font-weight: 400; font-size: var(--fs-meta); }
+
+/* Savings & investments: the notched + at the bottom-left opens the form */
+#invCard { padding: var(--sp-4) var(--sp-4) 46px; }
+.notch > .mplus { position: absolute; left: 2px; bottom: 2px; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center;
+  background: var(--chip, var(--accent)); color: var(--on-accent); cursor: pointer; z-index: 2; -webkit-appearance: none; appearance: none; }
+.notch > .mplus svg { width: 16px; height: 16px; transition: transform .3s var(--spring); }
+.notch > .mplus.open svg { transform: rotate(45deg); }
+.mplus::after { content: ""; position: absolute; inset: -10px; }   /* a bigger target for a thumb */
+
+/* the add form, in the app's own look: small uppercase labels over rounded fields, a pill switch for the type */
+.aform { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3) var(--sp-2); margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--line); }
+.aform[hidden] { display: none; }
+.aform .wide { grid-column: 1 / -1; }
+.fl { display: block; min-width: 0; }
+.fl .k { display: block; margin-bottom: 5px; }
+.aform .field { margin: 0; width: 100%; min-height: 44px; font-size: 16px; border-radius: var(--r-3); padding: 9px 12px; background: var(--surface); }
+.aform input[type=date] { -webkit-appearance: none; appearance: none; text-align: left; color-scheme: light dark; }
+.aform .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.aform .seg button { flex: 1; min-height: 40px; padding: 0 10px; font-size: var(--fs-meta); white-space: nowrap; }
+.aform .chips { margin: 0; }
+.aform .chips button { min-height: 34px; padding: 6px 12px; }
+.aform .fine { margin: 0; }
+.aform .err { color: var(--danger); font-size: var(--fs-meta); margin: 0; }
+.aform .err:empty { display: none; }
+.abtns { display: flex; gap: var(--sp-2); }
+.abtns .pillbtn { flex: 1; min-height: 46px; font-size: 15px; }
+
+/* each card's notch has its own colour (the island's palette of hues; the theme picks the right shade) */
+#mBal { --chip: var(--c-violet); }
+#mNw { --chip: var(--c-sky); }
+#gwCard { --chip: var(--c-green); }
+#mChart { --chip: var(--c-orange); }
+#nwCard { --chip: var(--c-blue); }
+#invCard { --chip: var(--c-pink); }
+#v-settings .group:nth-child(1) { --chip: var(--c-lime); }
+#v-settings .group:nth-child(2) { --chip: var(--c-yellow); }
+#v-settings .group:nth-child(3) { --chip: var(--c-sky); }
+#v-settings .group:nth-child(4) { --chip: var(--c-red); }

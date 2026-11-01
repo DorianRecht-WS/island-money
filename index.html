@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=17">
+<link rel="stylesheet" href="web.css?v=18">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -63,10 +63,7 @@
         <div id="gwCard" class="notch">
           <i data-ic="trend"></i>
           <span class="k">Yearly growth</span>
-          <b id="gwAmount">+&euro;0</b>
-          <small id="gwNote">What your savings and investments earn in a year</small>
-          <ul id="gwList" class="alist rlist"></ul>
-          <small class="fine" id="gwFine"></small>
+          <div class="gwrow"><b id="gwAmount">+&euro;0</b><span id="gwPct"></span></div>
         </div>
         <div id="mChart" class="notch">
           <i data-ic="trend"></i>
@@ -99,44 +96,32 @@
           <div id="nwBar" aria-hidden="true"></div>
           <div id="nwLegend"></div>
         </div>
-        <div id="invCard" class="notch">
+        <div id="invCard" class="notch" data-bl="1">
           <i data-ic="invest"></i>
-          <div class="ch"><span class="k">Savings &amp; investments</span><button class="pillbtn" id="assetAdd" type="button">Add</button></div>
-          <div id="invStats" class="stats">
-            <div><span class="k">Put in</span><b id="stIn">&euro;0</b></div>
-            <div><span class="k">Worth now</span><b id="stNow">&euro;0</b></div>
-            <div><span class="k" id="stGainK">Gain</span><b id="stGain">&euro;0</b></div>
-          </div>
+          <span class="k">Savings &amp; investments</span>
           <ul id="assetList" class="alist"></ul>
           <form id="assetForm" class="aform" hidden autocomplete="off">
+            <div class="fl wide">
+              <span class="k">Type</span>
+              <div class="seg" id="asKindSeg" role="group" aria-label="Type">
+                <button type="button" data-k="savings">Savings</button><button type="button" data-k="investment" class="on">Investment</button><button type="button" data-k="property">Property</button><button type="button" data-k="debt">Debt</button>
+              </div>
+              <input type="hidden" id="asKind" value="investment">
+            </div>
             <div class="chips wide" id="asChips">
               <button type="button" data-n="Livret A" data-k="savings" data-r="livret-a">Livret A</button><button type="button" data-n="Livret Jeune" data-k="savings" data-r="livret-jeune">Livret Jeune</button><button type="button" data-n="LDDS" data-k="savings" data-r="ldds">LDDS</button><button type="button" data-n="LEP" data-k="savings" data-r="lep">LEP</button><button type="button" data-n="PEL" data-k="savings" data-r="pel">PEL</button><button type="button" data-n="PEA" data-k="investment">PEA</button><button type="button" data-n="Assurance vie" data-k="investment">Assurance vie</button><button type="button" data-n="Crypto" data-k="investment">Crypto</button>
             </div>
-            <input class="field wide" id="asName" placeholder="Name (e.g. PEA, Livret A, Flat)" maxlength="60" aria-label="Name" required>
-            <select class="field" id="asKind" aria-label="Type"><option value="investment">Investment</option><option value="savings">Savings</option><option value="property">Property</option><option value="debt">Debt</option></select>
-            <input class="field" id="asSince" type="date" aria-label="Since">
-            <input class="field" id="asInvested" inputmode="decimal" placeholder="Put in (&euro;)" maxlength="14" aria-label="Amount put in">
-            <input class="field" id="asValue" inputmode="decimal" placeholder="Worth now (&euro;)" maxlength="14" aria-label="Worth now" required>
-            <input class="field wide" id="asRate" inputmode="decimal" placeholder="Interest rate, % per year (optional)" maxlength="6" aria-label="Interest rate in percent per year">
+            <label class="fl wide"><span class="k">Name</span><input class="field" id="asName" maxlength="60" placeholder="PEA, Livret A, Flat..." required></label>
+            <label class="fl"><span class="k">Worth now (&euro;)</span><input class="field" id="asValue" inputmode="decimal" maxlength="14" placeholder="0" required></label>
+            <label class="fl" id="asInvestedBox"><span class="k">Put in (&euro;)</span><input class="field" id="asInvested" inputmode="decimal" maxlength="14" placeholder="0"></label>
+            <label class="fl"><span class="k">Interest per year (%)</span><input class="field" id="asRate" inputmode="decimal" maxlength="6" placeholder="0"></label>
+            <label class="fl"><span class="k">Since</span><input class="field" id="asSince" type="date"></label>
             <div class="chips wide" id="asRates"></div>
             <small class="fine wide" id="asRatesNote"></small>
-            <button class="pillbtn primary" id="asSave" type="submit">Save</button>
-            <button class="pillbtn" id="asCancel" type="button">Cancel</button>
             <p class="err wide" id="asErr" role="alert"></p>
+            <div class="abtns wide"><button class="pillbtn primary" id="asSave" type="submit">Save</button><button class="pillbtn" id="asCancel" type="button">Cancel</button></div>
           </form>
-        </div>
-        <div id="projCard" class="notch">
-          <i data-ic="trend"></i>
-          <div class="ch"><span class="k">If you keep saving</span></div>
-          <div class="pin">
-            <label>Per month<input class="field" id="pjMonthly" inputmode="decimal" maxlength="9" aria-label="Saved per month in euros"></label>
-            <label>Return / year %<input class="field" id="pjRate" inputmode="decimal" maxlength="5" aria-label="Return per year in percent"></label>
-            <label>Years<input class="field" id="pjYears" inputmode="numeric" maxlength="2" aria-label="Number of years"></label>
-          </div>
-          <div class="chips" id="pjChips"></div>
-          <div class="pres"><b id="pjTotal">&euro;0</b><small id="pjSub"></small></div>
-          <svg id="pjChart" role="img" aria-label="Projected growth"></svg>
-          <small class="fine">An estimate, not a promise: real markets go up and down.</small>
+          <button class="mplus" id="assetAdd" type="button" aria-label="Add savings or an investment"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
         </div>
       </section>
 
@@ -195,8 +180,8 @@
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script defer src="config.js"></script>
 <script defer src="icons.js"></script>
-<script defer src="notch.js?v=5"></script>
-<script defer src="wealth.js?v=2"></script>
-<script defer src="app.js?v=21"></script>
+<script defer src="notch.js?v=6"></script>
+<script defer src="wealth.js?v=3"></script>
+<script defer src="app.js?v=22"></script>
 </body>
 </html>
