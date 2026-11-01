@@ -24,7 +24,7 @@
 </script>
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=24">
+<link rel="stylesheet" href="web.css?v=26">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -93,18 +93,19 @@
         </div>
       </section>
 
-      <!-- pay: your card, unlocked with your fingerprint or face, then Google Wallet opens ready to tap -->
+      <!-- pay: a gallery of your cards (typed in by you), unlocked with your fingerprint or face -->
       <section class="view" id="v-pay">
         <div class="bar top"><span class="label">Pay</span><span id="payTag"></span></div>
-        <div id="payCard" class="notch" data-locked="1">
+        <div id="cardsCard" class="notch" data-bl="1">
           <i data-ic="lock"></i>
-          <div class="paytop"><b>Island Pay</b><span id="payBank"></span></div>
-          <div class="paymid"><span class="paychip"></span><span id="payNum">&middot;&middot;&middot;&middot; &middot;&middot;&middot;&middot; &middot;&middot;&middot;&middot; &middot;&middot;&middot;&middot;</span></div>
-          <div class="paybot"><span id="payHolder">Your card</span><span id="payState">Locked</span></div>
+          <div class="ch"><span class="k">My cards</span><button class="pillbtn" id="cardEdit" type="button" hidden>Edit</button></div>
+          <div id="cardRail" class="rail" aria-label="Your cards"></div>
+          <div id="cardDots" class="dots" aria-hidden="true"></div>
+          <button class="mplus" id="cardAdd" type="button" aria-label="Add a card"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
         </div>
-        <button class="pillbtn primary bigbtn" id="payGo" type="button">Unlock</button>
+        <button class="pillbtn primary bigbtn" id="payGo" type="button" hidden>Unlock</button>
         <a class="pillbtn bigbtn paylink" id="payWallet" href="https://wallet.google.com/" hidden>Open Google Wallet</a>
-        <small class="fine" id="payNote">Unlocks with your fingerprint, face or phone code. Then open your wallet and hold the phone to the reader.</small>
+        <small class="fine" id="payNote">Your cards unlock with your fingerprint, face or phone code.</small>
       </section>
 
       <!-- wealth: net worth, investments with their returns, and a growth calculator -->
@@ -214,6 +215,37 @@
   </form>
 </div>
 
+<!-- the card sheet: add or edit a card, with a live preview -->
+<div id="csheet" hidden>
+  <div id="csheetBg"></div>
+  <form id="cform" class="sheetpanel" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="cTitle">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="shhead"><b id="cTitle">New card</b><button type="button" id="cX" class="shx" aria-label="Close">&times;</button></div>
+    <div id="cPreview" class="pcard preview"></div>
+    <div class="shgroup">
+      <div class="srow"><span>Bank</span><b id="cBankShow" class="shval none">Choose one</b></div>
+      <div class="opts" id="cBanks" role="listbox" aria-label="Bank"></div>
+    </div>
+    <div class="seg" id="cBrand" role="group" aria-label="Brand"><button type="button" data-b="visa" class="on">Visa</button><button type="button" data-b="mastercard">Mastercard</button><button type="button" data-b="cb">CB</button><button type="button" data-b="other">Other</button></div>
+    <div class="shgroup">
+      <label class="srow"><span>Last 4 digits</span><input id="cLast4" inputmode="numeric" maxlength="4" placeholder="1234"></label>
+      <label class="srow"><span>Name on the card</span><input id="cNick" maxlength="30" placeholder="My card"></label>
+    </div>
+    <div class="shgroup">
+      <div class="srow"><span>Background</span><b id="cBgShow" class="shval">Lilac</b></div>
+      <div class="swatchrow" id="cStyles"></div>
+      <div class="bgbtns">
+        <label class="pillbtn">Photo<input id="cPhoto" type="file" accept="image/*" hidden></label>
+        <label class="pillbtn">Colour <input id="cColor" type="color" value="#7a4fe0"></label>
+        <button type="button" class="pillbtn" id="cNoPhoto" hidden>Remove photo</button>
+      </div>
+    </div>
+    <p class="err" id="cErr" role="alert"></p>
+    <button class="pillbtn primary bigbtn" id="cSave" type="submit">Save</button>
+    <button class="shlink" id="cCancel" type="button">Cancel</button>
+  </form>
+</div>
+
 <!-- the lock cover: the app stays visible behind it, blurred; the chip shows that it is waiting for you -->
 <div id="lock" role="dialog" aria-label="Island Money is locked">
   <div class="lockchip"><i data-ic="lock"></i></div>
@@ -226,7 +258,7 @@
 <script defer src="notch.js?v=6"></script>
 <script defer src="wealth.js?v=3"></script>
 <script defer src="lock.js?v=3"></script>
-<script defer src="keypad.js?v=3"></script>
-<script defer src="app.js?v=36"></script>
+<script defer src="keypad.js?v=4"></script>
+<script defer src="app.js?v=38"></script>
 </body>
 </html>

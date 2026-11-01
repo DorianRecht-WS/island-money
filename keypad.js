@@ -32,7 +32,7 @@ const Keypad = (() => {
       if (fresh) v = '';
       const dot = v.indexOf('.');
       if (dot >= 0 && v.length - dot - 1 >= (opts.decimals ?? 2)) return;   // two decimals, like money
-      if (v === '0' && dot < 0) v = '';
+      if (opts.decimal && v === '0' && dot < 0) v = '';   // (an amount has no leading zero; a code or card digits keep theirs)
       if (v.replace('.', '').length >= (opts.max ?? 12)) return;
       v += k;
     }

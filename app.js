@@ -89,7 +89,7 @@ function enter(view, withNotch = false) {
     rise([$('mBal'), $('mChart')], 30, 80);
     if (mb) blobEntrance($('mBlob'));
     countUp($('mBalance'), data.balance, 1000, 200); drawIn();
-  } else if (view === 'pay') rise([$('payCard')], 30);
+  } else if (view === 'pay') rise([$('cardsCard')], 30);
   else if (view === 'wealth') rise([$('nwCard'), $('invCard'), $('projCard')], 30, 80);
   else rise([...document.querySelectorAll('#v-settings .group')], 30, 70);
 }
@@ -656,46 +656,158 @@ $('lockSw').addEventListener('click', async () => {
   $('lockSw').disabled = false;
 });
 
-// ---- Pay: your card, unlocked with your fingerprint, face or phone code; then your phone's wallet opens, ready to tap.
-// Honest limit: a web page cannot hold or read your Google Pay card, and it cannot make a contactless payment: those belong to the wallet app
-// and the phone's secure chip. This tab unlocks (the device checks it is you), then opens the wallet app; holding the phone to the reader is done there.
-let payUnlocked = false, payCtl = null;
-const walletLink = () => {
-  const ua = navigator.userAgent;
-  if (/android/i.test(ua)) return 'intent://#Intent;package=com.google.android.apps.walletnfcrel;S.browser_fallback_url=' + encodeURIComponent('https://wallet.google.com/') + ';end';   // the Google Wallet app, or its web page if it is not installed
-  if (/iphone|ipad|ipod/i.test(ua)) return 'shoebox://';   // Apple Wallet
-  return 'https://wallet.google.com/';
+// ---- Pay: a gallery of your cards. They are typed in by you (bank, brand, last four digits, a name, a background), never the full number:
+// no app can read the cards in Google Pay. The details stay blurred until your fingerprint, face or phone code unlocks them.
+const BANKS = ["Caisse d'Epargne", 'BNP Paribas', 'Societe Generale', 'Credit Agricole', 'LCL', 'Credit Mutuel', 'La Banque Postale', 'Boursorama', 'Revolut', 'N26', 'Wise', 'Other'];
+const PRESETS = {
+  lilac: 'linear-gradient(135deg,#7a4fe0,#3b82d9)', ember: 'linear-gradient(135deg,#e0561f,#d99a1c)', aurora: 'linear-gradient(135deg,#14a39a,#5566e6)',
+  coral: 'linear-gradient(135deg,#e5483b,#d9822b)', lime: 'linear-gradient(135deg,#6f8f00,#2f9d6b)', rose: 'linear-gradient(135deg,#d9558a,#8a5fe0)',
+  night: 'linear-gradient(135deg,#0b0e16,#2b3250)', gold: 'linear-gradient(135deg,#8a6a1f,#d9b34a)', steel: 'linear-gradient(135deg,#4b5563,#9ca3af)',
 };
-function renderPay() {
-  const cash = shared.find((x) => (!x.kind || x.kind === 'cash') && x.bank_link_id);
-  $('payCard').classList.toggle('open', payUnlocked);
+const BRAND_MARK = { visa: '<span class="brand visa">VISA</span>', mastercard: '<span class="brand mc"><i></i><i></i></span>', cb: '<span class="brand cb">CB</span>', other: '' };
+const IMG_OK = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, HEX_OK = /^#[0-9a-fA-F]{6}$/;
+let cards = [], cardsReady = true, payUnlocked = false, payCtl = null;
+let cardDraft = null;   // the card being added or edited: { id?, bank, brand, last4, nickname, style, image }
+
+async function loadCards() {
+  if (!user) { cards = []; renderCards(); return; }
+  const r = await sb.from('cards').select('*').order('position').order('created_at');
+  cardsReady = !r.error;
+  cards = (r.data || []);
+  renderCards();
+}
+const cardBg = (c) => c.image && IMG_OK.test(c.image)
+  ? `background-image:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.6)),url("${c.image}")`
+  : HEX_OK.test(c.style || '') ? `background:linear-gradient(135deg,${c.style},color-mix(in srgb,${c.style} 55%,#000))`
+  : `background:${PRESETS[c.style] || PRESETS.lilac}`;
+const cardHtml = (c) => `<div class="pcard" ${c.id ? `data-id="${esc(c.id)}"` : ''} style="${cardBg(c)}">
+  <div class="ptop"><span class="pbank">${esc(c.bank || 'Bank')}</span>${BRAND_MARK[c.brand] || ''}</div>
+  <span class="pchip"></span>
+  <div class="pbot"><span class="pnum">•••• •••• •••• ${esc(c.last4 || '0000')}</span><span class="pname">${esc(c.nickname || '')}</span></div>
+</div>`;
+function renderCards() {
+  const rail = $('cardRail');
+  rail.classList.toggle('open', payUnlocked);
+  $('payTag').textContent = !user ? 'Signed out' : !cardsReady ? 'Needs the database update' : '';
+  rail.innerHTML = cards.length ? cards.map(cardHtml).join('') : `<div class="pcard empty" id="cardEmpty"><span>${user ? (cardsReady ? 'Add your first card with the +' : 'Needs the database update') : 'Sign in to add your cards'}</span></div>`;
+  $('cardDots').innerHTML = cards.length > 1 ? cards.map((_, i) => `<i${i === 0 ? ' class="on"' : ''}></i>`).join('') : '';
+  $('cardEdit').hidden = !cards.length;
+  $('payGo').hidden = payUnlocked || !cards.length; $('payWallet').hidden = !payUnlocked;
   $('payWallet').href = walletLink();
   $('payWallet').textContent = /iphone|ipad|ipod/i.test(navigator.userAgent) ? 'Open Wallet' : 'Open Google Wallet';
-  $('payBank').textContent = link ? link.bank_name : user ? 'Connect your bank in Settings' : 'Signed out';
-  $('payNum').textContent = payUnlocked && cash && cash.iban_hint ? `Account ···· ${cash.iban_hint}` : '···· ···· ···· ····';
-  $('payHolder').textContent = payUnlocked && cash ? cash.name : 'Your card';
-  $('payState').textContent = payUnlocked ? 'Unlocked' : 'Locked';
-  $('payGo').hidden = payUnlocked; $('payWallet').hidden = !payUnlocked;
 }
+$('cardRail').addEventListener('scroll', () => {
+  const r = $('cardRail'), i = Math.round(r.scrollLeft / Math.max(1, r.clientWidth));
+  [...$('cardDots').children].forEach((d, k) => d.classList.toggle('on', k === i));
+}, { passive: true });
+const shownCard = () => { const r = $('cardRail'); return cards[Math.max(0, Math.min(cards.length - 1, Math.round(r.scrollLeft / Math.max(1, r.clientWidth))))]; };
+
+// ---- unlocking: the device checks it is you (the first time it makes the key for this)
+const walletLink = () => {
+  const ua = navigator.userAgent;
+  if (/android/i.test(ua)) return 'intent://#Intent;package=com.google.android.apps.walletnfcrel;S.browser_fallback_url=' + encodeURIComponent('https://wallet.google.com/') + ';end';
+  if (/iphone|ipad|ipod/i.test(ua)) return 'shoebox://';
+  return 'https://wallet.google.com/';
+};
 async function payGo() {
-  if (!(await PayLock.supported())) { $('payNote').textContent = 'This device or browser cannot check your fingerprint or face here, so the card stays locked.'; return; }
+  if (!(await PayLock.supported())) { $('payNote').textContent = 'This device or browser cannot check your fingerprint or face here, so your cards stay hidden.'; return; }
   if (payCtl) payCtl.abort();
   const ctl = payCtl = new AbortController();
   $('payNote').textContent = 'Waiting for your fingerprint, face or phone code...';
   try {
-    if (!PayLock.enabled()) await PayLock.enable(user && user.email);   // the first time: the device makes the key for this card
+    if (!PayLock.enabled()) await PayLock.enable(user && user.email);
     await PayLock.verify(ctl.signal);
     if (ctl !== payCtl) return;
-    payUnlocked = true; renderPay();
-    $('payNote').textContent = 'Unlocked. To pay in a shop, open your wallet with the button below and hold the phone to the reader.';   // (it no longer jumps to the wallet by itself)
+    payUnlocked = true; renderCards();
+    $('payNote').textContent = 'Unlocked. To pay in a shop, open your wallet below and hold the phone to the reader.';
   } catch (e) {
     if (ctl === payCtl) $('payNote').textContent = e && e.name === 'NotAllowedError' ? 'Not unlocked. Tap Unlock to try again.' : 'Could not unlock. Tap Unlock to try again.';
   }
 }
 $('payGo').addEventListener('click', payGo);
-function payEnter() { payUnlocked = false; renderPay(); $('payNote').textContent = 'Unlocks with your fingerprint, face or phone code.'; setTimeout(() => { if (tab === 'pay') payGo(); }, 350); }   // it asks by itself when you open the tab
-function payRelock() { if (payCtl) { payCtl.abort(); payCtl = null; } if (payUnlocked) { payUnlocked = false; renderPay(); } }
-document.addEventListener('visibilitychange', () => { if (document.hidden && tab === 'pay') { payUnlocked = false; renderPay(); } });   // coming back from the wallet: locked again
+function payEnter() { payUnlocked = false; renderCards(); loadCards(); $('payNote').textContent = PAY_HINT; setTimeout(() => { if (tab === 'pay' && cards.length) payGo(); }, 350); }   // it asks by itself when you open the tab
+const PAY_HINT = 'Your cards unlock with your fingerprint, face or phone code.';
+function payRelock() { if (payCtl) { payCtl.abort(); payCtl = null; } if (payUnlocked) { payUnlocked = false; renderCards(); $('payNote').textContent = PAY_HINT; } }
+document.addEventListener('visibilitychange', () => { if (document.hidden && tab === 'pay') { payUnlocked = false; renderCards(); $('payNote').textContent = PAY_HINT; } });   // coming back from the wallet: hidden again
+
+// ---- the add / edit sheet, with a live preview of the card
+function openCardSheet(card) {
+  cardDraft = card ? { ...card } : { bank: '', brand: 'visa', last4: '', nickname: '', style: 'lilac', image: null };
+  $('csheet').hidden = false;
+  $('cTitle').textContent = card ? 'Edit card' : 'New card';
+  $('cLast4').value = cardDraft.last4; $('cNick').value = cardDraft.nickname;
+  $('cColor').value = HEX_OK.test(cardDraft.style) ? cardDraft.style : '#7a4fe0';
+  $('cErr').textContent = ''; $('cCancel').textContent = card ? 'Delete this card' : 'Cancel'; $('cCancel').classList.toggle('danger', !!card);
+  renderCardSheet();
+  if (!reduced) { $('cform').animate([{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: 420, easing: RISE }); $('csheetBg').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260 }); }
+}
+function renderCardSheet() {
+  const d = cardDraft;
+  $('cPreview').outerHTML = cardHtml(d).replace('class="pcard"', 'class="pcard preview" id="cPreview"');
+  $('cBanks').innerHTML = BANKS.map((b) => `<button type="button" role="option" data-b="${esc(b)}" aria-selected="${b === d.bank}"${b === d.bank ? ' class="on"' : ''}>${esc(b)}</button>`).join('');
+  $('cBankShow').textContent = d.bank || 'Choose one'; $('cBankShow').classList.toggle('none', !d.bank);
+  for (const b of document.querySelectorAll('#cBrand button')) b.classList.toggle('on', b.dataset.b === d.brand);
+  $('cStyles').innerHTML = Object.entries(PRESETS).map(([k, v]) => `<button type="button" data-s="${k}" aria-label="${k}" style="background:${v}"${!d.image && d.style === k ? ' class="on"' : ''}></button>`).join('');
+  $('cBgShow').textContent = d.image ? 'Your photo' : HEX_OK.test(d.style) ? 'Custom colour' : d.style[0].toUpperCase() + d.style.slice(1);
+  $('cNoPhoto').hidden = !d.image;
+}
+function closeCardSheet() {
+  if ($('csheet').hidden) return;
+  const was = cardDraft; cardDraft = null;
+  if (reduced) { $('csheet').hidden = true; return; }
+  $('cform').animate([{ transform: 'none' }, { transform: 'translateY(100%)' }], { duration: 260, easing: 'cubic-bezier(.4, 0, 1, 1)' }).onfinish = () => { if (!cardDraft) $('csheet').hidden = true; };
+  $('csheetBg').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260 });
+  return was;
+}
+$('cBanks').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { cardDraft.bank = b.dataset.b; renderCardSheet(); } });
+$('cBrand').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { cardDraft.brand = b.dataset.b; renderCardSheet(); } });
+$('cStyles').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { cardDraft.style = b.dataset.s; cardDraft.image = null; renderCardSheet(); } });
+$('cColor').addEventListener('input', () => { cardDraft.style = $('cColor').value; cardDraft.image = null; renderCardSheet(); });
+$('cNoPhoto').addEventListener('click', () => { cardDraft.image = null; renderCardSheet(); });
+$('cLast4').addEventListener('input', () => { cardDraft.last4 = $('cLast4').value.replace(/\D/g, '').slice(0, 4); renderCardSheet(); });
+$('cNick').addEventListener('input', () => { cardDraft.nickname = $('cNick').value.slice(0, 30); renderCardSheet(); });
+// a photo becomes a card-shaped, small picture (the card ratio, 800 px wide) so it is light to store
+$('cPhoto').addEventListener('change', async () => {
+  const f = $('cPhoto').files && $('cPhoto').files[0];
+  $('cPhoto').value = '';
+  if (!f) return;
+  try {
+    const bmp = await createImageBitmap(f);
+    const W = 800, H = 504, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const k = Math.max(W / bmp.width, H / bmp.height), sw = W / k, sh = H / k;   // fill the card, cropping the middle
+    c.getContext('2d').drawImage(bmp, (bmp.width - sw) / 2, (bmp.height - sh) / 2, sw, sh, 0, 0, W, H);
+    let q = 0.82, url = c.toDataURL('image/jpeg', q);
+    while (url.length > 240000 && q > 0.4) { q -= 0.1; url = c.toDataURL('image/jpeg', q); }
+    cardDraft.image = url; $('cErr').textContent = ''; renderCardSheet();
+  } catch (e) { $('cErr').textContent = 'That picture could not be used. Try another one.'; }
+});
+$('cardAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } openCardSheet(null); });
+$('cardRail').addEventListener('click', (e) => { if (e.target.closest('#cardEmpty') && user && cardsReady) openCardSheet(null); });
+$('cardEdit').addEventListener('click', () => { const c = shownCard(); if (c) openCardSheet(c); });
+$('csheetBg').addEventListener('click', closeCardSheet);
+$('cX').addEventListener('click', closeCardSheet);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCardSheet(); });
+$('cform').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const d = cardDraft;
+  if (!d.bank) { $('cErr').textContent = 'Choose the bank from the list'; return; }
+  if (!/^\d{4}$/.test(d.last4)) { $('cErr').textContent = 'Type the last four digits of the card'; return; }
+  const row = { bank: d.bank, brand: d.brand, last4: d.last4, nickname: d.nickname.trim(), style: d.style, image: d.image || null };
+  $('cSave').disabled = true;
+  const { error } = d.id ? await sb.from('cards').update(row).eq('id', d.id) : await sb.from('cards').insert({ ...row, user_id: user.id, position: cards.length });
+  $('cSave').disabled = false;
+  if (error) { $('cErr').textContent = fail(error); return; }
+  closeCardSheet(); await loadCards();
+});
+$('cCancel').addEventListener('click', async () => {
+  const d = cardDraft;
+  if (d && d.id) {
+    if (!confirm('Delete this card from the app?')) return;
+    const { error } = await sb.from('cards').delete().eq('id', d.id);
+    if (error) { $('cErr').textContent = fail(error); return; }
+    closeCardSheet(); await loadCards();
+  } else closeCardSheet();
+});
 
 // ---- who is signed in
 function onSession(session) {
@@ -709,7 +821,7 @@ function onSession(session) {
     // not inside the auth callback: it holds the auth lock. Then, with a bank connected, read it (the function paces itself) and show what it found.
     setTimeout(() => load(true).then(() => bankSync(false)).then((fresh) => fresh && load(false)), 0);
   } else {
-    store.clear(); link = null; renderBank(); assets = []; bankAssets = []; assetsLoaded = true; closeAssetForm(); renderWealth();
+    store.clear(); link = null; renderBank(); assets = []; bankAssets = []; assetsLoaded = true; closeAssetForm(); renderWealth(); cards = []; renderCards();
     data = { balance: 0, history: [0, 0], accounts: 0, thin: true, loaded: true };
     accStep = 'idle'; renderAccount(); render(false);
   }
@@ -795,8 +907,9 @@ Keypad.attach($('mEdit'), { decimal: true });
 Keypad.attach($('asValue'), { decimal: true });
 Keypad.attach($('asInvested'), { decimal: true });
 Keypad.attach($('asRate'), { decimal: true, max: 5 });
+Keypad.attach($('cLast4'), { decimal: false, max: 4 });
 Keypad.attach($('accIn'), { decimal: false, max: 10, when: () => accStep === 'code' });
-renderPay();
+renderCards();
 renderLock();
 if (root.classList.contains('locked')) setTimeout(tryUnlock, 500);   // the cover is already up (lock.js ran first)
 showTab('money');
