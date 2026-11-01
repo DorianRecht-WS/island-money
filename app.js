@@ -230,13 +230,17 @@ $('accForm').addEventListener('submit', async (e) => {
 });
 
 // ---- the balance: the total is the last day of balance_history, which the database keeps up to date
+let link = null;   // the connected bank (a bank_links row), or null
 async function load(animate) {
-  const [a, h] = await Promise.all([
+  const [a, h, l] = await Promise.all([
     sb.from('bank_accounts').select('id,name,opening_balance,opened_on').order('created_at'),
     sb.from('balance_history').select('day,balance').order('day'),
+    sb.from('bank_links').select('id,bank_name,valid_until,synced_at,last_error').order('created_at', { ascending: false }).limit(1),
   ]);
   const err = a.error || h.error;
   if (err) { data.loaded = true; render(false); say(fail(err), true); return; }
+  link = (l.data && l.data[0]) || null;   // (no table yet, before the bank migration: no bank)
+  renderBank();
   const history = h.data.map((x) => Number(x.balance));
   const before = data.balance, had = !!data.fromCache;   // had: the saved balance was already on screen
   data = { accounts: a.data.length, accountId: a.data[0] && a.data[0].id, balance: history.length ? history[history.length - 1] : 0, history: history.length > 1 ? history : [history[0] || 0, history[0] || 0], loaded: true };
@@ -251,7 +255,8 @@ function refresh() {
   if (!user || editing || Date.now() - lastLoad < 3000) return;
   lastLoad = Date.now();
   const before = data.balance;
-  load(false).then(() => { if (tab === 'money' && data.balance !== before) countUp($('mBalance'), data.balance, 600, 0, before); });
+  const shown = () => { if (tab === 'money' && data.balance !== before) countUp($('mBalance'), data.balance, 600, 0, before); };
+  load(false).then(() => { shown(); return bankSync(false); }).then((fresh) => fresh && load(false)).then(shown);
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && tab === 'money') refresh(); });
 window.addEventListener('focus', () => { if (tab === 'money') refresh(); });
@@ -261,11 +266,11 @@ function render(animate) {
   const body = document.body;
   body.classList.toggle('out', !user && !pending);
   body.classList.toggle('loading', !data.loaded);   // the skeleton shows until real (or saved) numbers exist
-  $('mTag').textContent = pending ? '' : user ? 'Live' : 'Signed out'; $('mTag').classList.toggle('live', !!user);
+  $('mTag').textContent = pending ? '' : user ? (link ? 'Live · bank' : 'Live') : 'Signed out'; $('mTag').classList.toggle('live', !!user);
   $('mBalance').title = user ? 'Click to change' : 'Sign in';
   if (!user && !pending) { $('mBalance').textContent = '€-'; say('Tap here to sign in'); drawChart(); return; }
   if (!animate) $('mBalance').textContent = eur(data.balance);
-  say(data.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
+  say(link ? `From ${link.bank_name}` : data.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
   drawChart();
   if (animate && tab === 'money') enter('money');
 }
@@ -274,6 +279,7 @@ function startEdit() {
   if (pending) return;
   if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; }
   if (editing) return;
+  if (link) { say('Your balance comes from your bank'); return; }
   editing = true;
   const inp = $('mEdit');
   inp.value = data.accounts ? String(round2(data.balance)) : '';
@@ -311,6 +317,78 @@ $('mEdit').addEventListener('keydown', (e) => {
 });
 $('mEdit').addEventListener('blur', () => { if (editing) saveEdit(); });
 
+// ---- settings: the bank (Enable Banking through the `bank` Edge Function). The balance and transactions then come from the bank.
+const BANK_API = `${url}/functions/v1/bank`;
+async function bankCall(path, method = 'POST', body = {}) {
+  const { data: d } = await sb.auth.getSession();
+  if (!d.session) throw new Error('Sign in first');
+  const res = await fetch(BANK_API + path, { method, headers: { Authorization: `Bearer ${d.session.access_token}`, 'Content-Type': 'application/json' }, body: method === 'GET' ? undefined : JSON.stringify(body) });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(out.error === 'not_configured' ? 'The bank service is not set up yet' : out.error === 'login_required' ? 'Sign in again' : 'The bank did not answer, try again');
+  return out;
+}
+const bankReturn = new URLSearchParams(location.search).get('bank');   // set by the function when the bank sends you back
+if (bankReturn) history.replaceState(null, '', location.pathname);
+let bankNote = { ok: 'Bank connected. Loading your balance...', cancelled: 'The connection was cancelled', error: 'The connection did not work, try again' }[bankReturn] || '', bankBad = bankReturn === 'error', bankBusy = false;
+const ago = (iso) => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+function renderBank() {
+  const expired = link && (link.last_error === 'expired' || Date.parse(link.valid_until) < Date.now());
+  const small = (text, bad) => `<small${bad ? ' class="err"' : ''}>${esc(text)}</small>`;
+  $('bankBtn').disabled = !user || bankBusy;
+  $('bankSync').hidden = !link || expired;
+  $('bankSync').disabled = bankBusy;
+  if (!user) { $('bankText').innerHTML = `No bank connected${small('Sign in first')}`; $('bankBtn').textContent = 'Connect'; $('bankBtn').classList.add('primary'); $('bankForm').hidden = true; return; }
+  if (!link) {
+    $('bankText').innerHTML = `No bank connected${small(bankNote || 'Your real balance and transactions', bankBad)}`;
+    $('bankBtn').textContent = $('bankForm').hidden ? 'Connect' : 'Cancel'; $('bankBtn').classList.toggle('primary', $('bankForm').hidden);
+  } else if (expired) {
+    $('bankText').innerHTML = `${esc(link.bank_name)}${small(bankNote || 'Your approval ended: connect again to keep syncing', true)}`;
+    $('bankBtn').textContent = 'Reconnect'; $('bankBtn').classList.add('primary'); $('bankForm').hidden = true;
+  } else {
+    const until = new Date(link.valid_until).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    $('bankText').innerHTML = `${esc(link.bank_name)}${small(bankNote || (link.last_error ? 'The last sync failed, try again' : `${link.synced_at ? 'Synced ' + ago(link.synced_at) : 'Syncing...'} · approved until ${until}`), !!link.last_error || bankBad)}`;
+    $('bankBtn').textContent = 'Disconnect'; $('bankBtn').classList.remove('primary'); $('bankForm').hidden = true;
+  }
+}
+// asks the function to read the bank (it keeps its own pace: banks only allow a few reads a day); true when something was read
+async function bankSync(force) {
+  if (!link || bankBusy || link.last_error === 'expired') return false;
+  bankBusy = true; renderBank();
+  try { const r = await bankCall('/sync', 'POST', { force }); return r.synced > 0; }
+  catch (e) { bankNote = fail(e); bankBad = true; return false; }
+  finally { bankBusy = false; renderBank(); }
+}
+async function bankConnect(bank) {
+  if (!link && data.accounts && !confirm('Connecting replaces the balance you typed with your bank’s real one. Continue?')) return;
+  bankBusy = true; bankNote = 'Opening your bank...'; bankBad = false; renderBank();
+  try { const r = await bankCall('/connect', 'POST', { bank }); location.href = r.url; }
+  catch (e) { bankBusy = false; bankNote = fail(e); bankBad = true; renderBank(); }
+}
+$('bankBtn').addEventListener('click', async () => {
+  bankNote = ''; bankBad = false;
+  const expired = link && (link.last_error === 'expired' || Date.parse(link.valid_until) < Date.now());
+  if (link && !expired) {
+    if (!confirm('Disconnect your bank? Its accounts and transactions are removed from the app.')) return;
+    bankBusy = true; renderBank();
+    try { await bankCall('/disconnect'); link = null; await load(false); } catch (e) { bankNote = fail(e); bankBad = true; }
+    bankBusy = false; renderBank(); return;
+  }
+  if (expired) return bankConnect(link.bank_name);
+  $('bankForm').hidden = !$('bankForm').hidden;   // the bank picker
+  renderBank();
+  if (!$('bankForm').hidden && !$('bankSel').options.length) {
+    $('bankSel').innerHTML = '<option>Loading banks...</option>'; $('bankGo').disabled = true;
+    try {
+      const { banks } = await bankCall('/banks?q=Epargne', 'GET');
+      $('bankSel').innerHTML = banks.map((b) => `<option>${esc(b)}</option>`).join('') || '<option value="">No bank found</option>';
+      $('bankGo').disabled = !banks.length;
+    } catch (e) { $('bankSel').innerHTML = ''; $('bankForm').hidden = true; bankNote = fail(e); bankBad = true; renderBank(); }
+  }
+});
+window.addEventListener('pageshow', (e) => { if (e.persisted && bankBusy) { bankBusy = false; bankNote = ''; renderBank(); } });   // back from the bank's page without finishing
+$('bankForm').addEventListener('submit', (e) => { e.preventDefault(); if ($('bankSel').value) bankConnect($('bankSel').value); });
+$('bankSync').addEventListener('click', async () => { bankNote = ''; bankBad = false; if (await bankSync(true)) await load(false); });
+
 // ---- who is signed in
 function onSession(session) {
   const next = session ? session.user : null;
@@ -319,9 +397,11 @@ function onSession(session) {
   renderAccount();
   if (!changed) return;
   if (user) {
-    showTab('money'); setTimeout(() => load(true), 0);   // not inside the auth callback: it holds the auth lock
+    showTab('money');
+    // not inside the auth callback: it holds the auth lock. Then, with a bank connected, read it (the function paces itself) and show what it found.
+    setTimeout(() => load(true).then(() => bankSync(false)).then((fresh) => fresh && load(false)), 0);
   } else {
-    store.clear();
+    store.clear(); link = null; renderBank();
     data = { balance: 0, history: [0, 0], accounts: 0, thin: true, loaded: true };
     accStep = 'idle'; renderAccount(); render(false);
   }
@@ -398,7 +478,9 @@ content.addEventListener('touchcancel', endPull, { passive: true });
   }
 })();
 renderAccount();
+renderBank();
 showTab('money');
+if (bankReturn) showTab('settings');   // coming back from the bank: show the result where it was started
 sizeChart();
 sb.auth.onAuthStateChange((_event, session) => onSession(session));
 sb.auth.getSession().then(({ data: d }) => onSession(d.session));
