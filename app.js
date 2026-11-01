@@ -718,7 +718,7 @@ function goalView(g) {
   }
   const p = Goals.plan({ saved: now, target: g.target, monthly: g.monthly || 0, rate, deadline });
   const over = isOver(g);
-  const state = !found ? 'Check' : p.done ? (over ? 'Over' : 'Reached') : deadline ? (p.status === 'ontrack' ? 'On track' : 'Behind') : `${Math.round(p.pct * 100)}%`;
+  const state = !found ? 'Check' : p.done ? (over ? 'Over' : 'Reached') : deadline ? (p.status === 'ontrack' ? 'On track' : `${Math.round(p.pct * 100)}%`) : `${Math.round(p.pct * 100)}%`;
   const left = !found ? '' : p.done ? (over ? `Over by ${eur(Math.abs(now - g.target))}` : 'Goal reached') : `${eur(Math.max(0, g.target - now))} ${over ? 'to go' : 'left'}`;
   const when = !found || p.done ? '' : p.reach ? `≈ ${monthYear(p.reach)}` : 'Add a monthly saving for a date';
   let hint = '';
@@ -738,7 +738,7 @@ function renderGoals() {
   $('gSum').textContent = goals.length ? `${goals.length} goal${goals.length > 1 ? 's' : ''} · ${reached} reached` : '';
   if (user && !goalsLoaded) { goalsHtml = ''; $('goalList').innerHTML = '<li class="gtile gsk"><div class="sk2"></div></li><li class="gtile gsk"><div class="sk2"></div></li>'; return; }
   const html = goals.map((g, i) => {
-    const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.behind ? 'behind' : v.state === 'On track' ? 'ontrack' : '', hue = GOAL_HUES[i % GOAL_HUES.length], open = goalOpen.has(g.id), bar = v.done ? 'var(--ok)' : v.behind ? 'var(--warn)' : hue;
+    const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.state === 'On track' ? 'ontrack' : '', hue = GOAL_HUES[i % GOAL_HUES.length], open = goalOpen.has(g.id), bar = v.done ? 'var(--ok)' : hue;
     // the chip in the notch: a tick once the goal is reached, otherwise a ring that fills as the goal does
     const chip = v.done ? '<path d="M6.5 12.5l3.8 3.8 7.2-8.1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
       : `<circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-opacity=".3" stroke-width="2.4"/><circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="${Math.max(pct, 3)} 100" transform="rotate(-90 12 12)"/>`;
@@ -806,6 +806,7 @@ $('goalAdd').addEventListener('click', () => { if (!user) { showTab('settings');
 $('goalList').addEventListener('click', (e) => {
   const li = e.target.closest('li[data-id]'); const g = li && goals.find((x) => x.id === li.dataset.id); if (!g) return;
   if (e.target.closest('[data-edit]')) { openGoalSheet(g); return; }
+  if (navigator.vibrate) navigator.vibrate(8);   // a small tick under the finger
   const on = li.classList.toggle('open'); li.setAttribute('aria-expanded', on);
   on ? goalOpen.add(g.id) : goalOpen.delete(g.id);
 });

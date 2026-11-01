@@ -426,3 +426,10 @@ body, #pill { -webkit-touch-callout: none; }
 #pill :not(input):not(textarea):not(select) { -webkit-user-select: none; user-select: none; }
 :focus:not(:focus-visible) { outline: none; }
 li[role="button"], .notch, button { touch-action: manipulation; }
+
+/* a goal answers a tap at once: it presses in and lights up while the finger is down */
+#goalList li.gtile { transition: transform .18s var(--spring); }
+#goalList li.gtile:active { transform: scale(.975); }
+#goalList li.gtile:active::before { background: var(--surface-2); }
+.gstate.behind { background: var(--surface-2); color: var(--text-2); }
+@media (prefers-reduced-motion: reduce) { #goalList li.gtile { transition: none; } #goalList li.gtile:active { transform: none; } }
