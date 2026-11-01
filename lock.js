@@ -41,4 +41,3 @@ const makeLock = (KEY) => {
   return { supported, enabled, enable, verify, disable };
 };
 window.AppLock = makeLock('money.lock');   // opens the app
-window.PayLock = makeLock('money.pay');   // opens the card on the Pay tab

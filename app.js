@@ -89,7 +89,7 @@ function enter(view, withNotch = false) {
     rise([$('mBal'), $('mChart')], 30, 80);
     if (mb) blobEntrance($('mBlob'));
     countUp($('mBalance'), data.balance, 1000, 200); drawIn();
-  } else if (view === 'pay') rise([$('cardsCard')], 30);
+  } else if (view === 'pay') rise([$('goalsCard')], 30);
   else if (view === 'wealth') rise([$('nwCard'), $('invCard'), $('projCard')], 30, 80);
   else rise([...document.querySelectorAll('#v-settings .group')], 30, 70);
 }
@@ -138,7 +138,7 @@ $('mbChart').addEventListener('pointerleave', () => mark(data.history.length - 1
 $('mbChart').addEventListener('pointerup', () => mark(data.history.length - 1, false));
 
 // ---- the tabs: the bottom bar, with the island's sliding indicator
-const TABS = ['money', 'pay', 'wealth', 'settings'];
+const TABS = ['money', 'goals', 'wealth', 'settings'];
 let tab = '', user = null, editing = false, pending = true;   // pending: the saved session has not been read yet
 function moveInd() {
   const ind = $('dockInd'), b = document.querySelector('#dock > button.on');
@@ -155,8 +155,7 @@ function showTab(t) {
   moveInd();
   if (t === 'money') sizeChart();
   if (t === 'wealth') loadRates();
-  if (t === 'pay') payEnter();
-  if (t !== 'pay') payRelock();
+  if (t === 'goals') loadGoals();
   blobRuns();
   if (!first) { enter(t, true); if (t === 'money' && user) refresh(); }
 }
@@ -465,6 +464,7 @@ function renderWealth() {
     return `<li${a.fromBank ? ' class="bank"' : ` data-id="${esc(a.id)}" tabindex="0"`}><i style="background:${KIND_COLOR[a.kind]}"></i><div class="main"><b>${esc(a.name)}</b><small${gn ? ` class="${gn.amount >= 0 ? 'up' : 'down'}"` : ''}>${sub}</small></div><span class="amt">${a.kind === 'debt' ? '−' : ''}${eur(a.value)}${a.rate && a.kind !== 'debt' ? `<em class="rt"> + ${a.rate}%</em>` : ''}</span></li>`;
   }).join('') || '<li class="empty">Add an investment, a savings account, property or a debt to see your net worth.</li>';
   renderGrowth(all);
+  renderGoals();
 }
 
 // the yearly growth card: each account at its own rate, added up
@@ -656,157 +656,94 @@ $('lockSw').addEventListener('click', async () => {
   $('lockSw').disabled = false;
 });
 
-// ---- Pay: a gallery of your cards. They are typed in by you (bank, brand, last four digits, a name, a background), never the full number:
-// no app can read the cards in Google Pay. The details stay blurred until your fingerprint, face or phone code unlocks them.
-const BANKS = ["Caisse d'Epargne", 'BNP Paribas', 'Societe Generale', 'Credit Agricole', 'LCL', 'Credit Mutuel', 'La Banque Postale', 'Boursorama', 'Revolut', 'N26', 'Wise', 'Other'];
-const PRESETS = {
-  lilac: 'linear-gradient(135deg,#7a4fe0,#3b82d9)', ember: 'linear-gradient(135deg,#e0561f,#d99a1c)', aurora: 'linear-gradient(135deg,#14a39a,#5566e6)',
-  coral: 'linear-gradient(135deg,#e5483b,#d9822b)', lime: 'linear-gradient(135deg,#6f8f00,#2f9d6b)', rose: 'linear-gradient(135deg,#d9558a,#8a5fe0)',
-  night: 'linear-gradient(135deg,#0b0e16,#2b3250)', gold: 'linear-gradient(135deg,#8a6a1f,#d9b34a)', steel: 'linear-gradient(135deg,#4b5563,#9ca3af)',
-};
-const BRAND_MARK = { visa: '<span class="brand visa">VISA</span>', mastercard: '<span class="brand mc"><i></i><i></i></span>', cb: '<span class="brand cb">CB</span>', other: '' };
-const IMG_OK = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, HEX_OK = /^#[0-9a-fA-F]{6}$/;
-let cards = [], cardsReady = true, payUnlocked = false, payCtl = null;
-let cardDraft = null;   // the card being added or edited: { id?, bank, brand, last4, nickname, style, image }
+// ---- the Goals tab: what you are saving for, how far along it is, and when it will be reached (the arithmetic is in goals.js)
+const GOAL_NAMES = ['Holiday', 'Emergency fund', 'New phone', 'Car', 'Home deposit', 'Wedding', 'Education', 'Gift', 'Other'];
+const GOAL_HUES = ['var(--c-sky)', 'var(--c-pink)', 'var(--c-green)', 'var(--c-orange)', 'var(--c-violet)', 'var(--c-yellow)', 'var(--c-blue)', 'var(--c-red)', 'var(--c-lime)'];
+let goals = [], goalsReady = true, goalDraft = null;   // goalDraft: the goal being added or edited
+const monthYear = (d) => d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
-async function loadCards() {
-  if (!user) { cards = []; renderCards(); return; }
-  const r = await sb.from('cards').select('*').order('position').order('created_at');
-  cardsReady = !r.error;
-  cards = (r.data || []);
-  renderCards();
+async function loadGoals() {
+  if (!user) { goals = []; renderGoals(); return; }
+  const r = await sb.from('goals').select('*').order('created_at');
+  goalsReady = !r.error;
+  goals = (r.data || []).map((g) => ({ ...g, target: Number(g.target), saved: Number(g.saved), monthly: Number(g.monthly) }));
+  renderGoals();
 }
-const cardBg = (c) => c.image && IMG_OK.test(c.image)
-  ? `background-image:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.6)),url("${c.image}")`
-  : HEX_OK.test(c.style || '') ? `background:linear-gradient(135deg,${c.style},color-mix(in srgb,${c.style} 55%,#000))`
-  : `background:${PRESETS[c.style] || PRESETS.lilac}`;
-const cardHtml = (c) => `<div class="pcard" ${c.id ? `data-id="${esc(c.id)}"` : ''} style="${cardBg(c)}">
-  <div class="ptop"><span class="pbank">${esc(c.bank || 'Bank')}</span>${BRAND_MARK[c.brand] || ''}</div>
-  <span class="pchip"></span>
-  <div class="pbot"><span class="pnum">•••• •••• •••• ${esc(c.last4 || '0000')}</span><span class="pname">${esc(c.nickname || '')}</span></div>
-</div>`;
-function renderCards() {
-  const rail = $('cardRail');
-  rail.classList.toggle('open', payUnlocked);
-  $('payTag').textContent = !user ? 'Signed out' : !cardsReady ? 'Needs the database update' : '';
-  rail.innerHTML = cards.length ? cards.map(cardHtml).join('') : `<div class="pcard empty" id="cardEmpty"><span>${user ? (cardsReady ? 'Add your first card with the +' : 'Needs the database update') : 'Sign in to add your cards'}</span></div>`;
-  $('cardDots').innerHTML = cards.length > 1 ? cards.map((_, i) => `<i${i === 0 ? ' class="on"' : ''}></i>`).join('') : '';
-  $('cardEdit').hidden = !cards.length;
-  $('payGo').hidden = payUnlocked || !cards.length; $('payWallet').hidden = !payUnlocked;
-  $('payWallet').href = walletLink();
-  $('payWallet').textContent = /iphone|ipad|ipod/i.test(navigator.userAgent) ? 'Open Wallet' : 'Open Google Wallet';
-}
-$('cardRail').addEventListener('scroll', () => {
-  const r = $('cardRail'), i = Math.round(r.scrollLeft / Math.max(1, r.clientWidth));
-  [...$('cardDots').children].forEach((d, k) => d.classList.toggle('on', k === i));
-}, { passive: true });
-const shownCard = () => { const r = $('cardRail'); return cards[Math.max(0, Math.min(cards.length - 1, Math.round(r.scrollLeft / Math.max(1, r.clientWidth))))]; };
-
-// ---- unlocking: the device checks it is you (the first time it makes the key for this)
-const walletLink = () => {
-  const ua = navigator.userAgent;
-  if (/android/i.test(ua)) return 'intent://#Intent;package=com.google.android.apps.walletnfcrel;S.browser_fallback_url=' + encodeURIComponent('https://wallet.google.com/') + ';end';
-  if (/iphone|ipad|ipod/i.test(ua)) return 'shoebox://';
-  return 'https://wallet.google.com/';
-};
-async function payGo() {
-  if (!(await PayLock.supported())) { $('payNote').textContent = 'This device or browser cannot check your fingerprint or face here, so your cards stay hidden.'; return; }
-  if (payCtl) payCtl.abort();
-  const ctl = payCtl = new AbortController();
-  $('payNote').textContent = 'Waiting for your fingerprint, face or phone code...';
-  try {
-    if (!PayLock.enabled()) await PayLock.enable(user && user.email);
-    await PayLock.verify(ctl.signal);
-    if (ctl !== payCtl) return;
-    payUnlocked = true; renderCards();
-    $('payNote').textContent = 'Unlocked. To pay in a shop, open your wallet below and hold the phone to the reader.';
-  } catch (e) {
-    if (ctl === payCtl) $('payNote').textContent = e && e.name === 'NotAllowedError' ? 'Not unlocked. Tap Unlock to try again.' : 'Could not unlock. Tap Unlock to try again.';
+function goalView(g) {
+  const src = Goals.source(g, allAssets()), deadline = g.deadline ? new Date(g.deadline + 'T12:00:00') : null;
+  const p = Goals.plan({ saved: src.saved, target: g.target, monthly: g.monthly || 0, rate: src.rate, deadline });
+  let line;
+  if (!src.found) line = 'The item this goal counted is gone: edit the goal';
+  else if (p.done) line = 'Reached';
+  else {
+    const when = p.reach ? `${eur(g.monthly || 0)}/month → ${monthYear(p.reach)}` : 'Add a monthly saving to see when';
+    line = deadline ? `By ${monthYear(deadline)}: ${p.status === 'ontrack' ? 'on track' : `needs ${eur(p.need)}/month`}. ${p.reach ? when : ''}` : when;
   }
+  return { src, p, line };
 }
-$('payGo').addEventListener('click', payGo);
-function payEnter() { payUnlocked = false; renderCards(); loadCards(); $('payNote').textContent = PAY_HINT; setTimeout(() => { if (tab === 'pay' && cards.length) payGo(); }, 350); }   // it asks by itself when you open the tab
-const PAY_HINT = 'Your cards unlock with your fingerprint, face or phone code.';
-function payRelock() { if (payCtl) { payCtl.abort(); payCtl = null; } if (payUnlocked) { payUnlocked = false; renderCards(); $('payNote').textContent = PAY_HINT; } }
-document.addEventListener('visibilitychange', () => { if (document.hidden && tab === 'pay') { payUnlocked = false; renderCards(); $('payNote').textContent = PAY_HINT; } });   // coming back from the wallet: hidden again
+function renderGoals() {
+  $('gTag').textContent = !user ? 'Signed out' : !goalsReady ? 'Needs the database update' : '';
+  $('goalList').innerHTML = goals.map((g, i) => {
+    const { src, p, line } = goalView(g);
+    return `<li data-id="${esc(g.id)}" tabindex="0"><i style="background:${GOAL_HUES[i % GOAL_HUES.length]}"></i><div class="main"><b>${esc(g.name)}</b><small>${eur(src.saved)} of ${eur(g.target)} · ${Math.round(p.pct * 100)}%</small><div class="pbar ${p.done ? '' : p.status === 'behind' ? 'warn' : ''}"><i style="width:${Math.round(p.pct * 100)}%"></i></div><small class="gline ${p.done ? 'up' : p.status === 'behind' ? 'down' : ''}">${esc(line)}</small></div><span class="amt">${p.done ? '✓' : eur(p.remaining) + ' left'}</span></li>`;
+  }).join('') || `<li class="empty">${user ? (goalsReady ? 'Tap the + to add something you are saving for.' : 'Needs the database update.') : 'Sign in to add your goals.'}</li>`;
+}
 
-// ---- the add / edit sheet, with a live preview of the card
-function openCardSheet(card) {
-  cardDraft = card ? { ...card } : { bank: '', brand: 'visa', last4: '', nickname: '', style: 'lilac', image: null };
-  $('csheet').hidden = false;
-  $('cTitle').textContent = card ? 'Edit card' : 'New card';
-  $('cLast4').value = cardDraft.last4; $('cNick').value = cardDraft.nickname;
-  $('cColor').value = HEX_OK.test(cardDraft.style) ? cardDraft.style : '#7a4fe0';
-  $('cErr').textContent = ''; $('cCancel').textContent = card ? 'Delete this card' : 'Cancel'; $('cCancel').classList.toggle('danger', !!card);
-  renderCardSheet();
-  if (!reduced) { $('cform').animate([{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: 420, easing: RISE }); $('csheetBg').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260 }); }
+// ---- the add / edit sheet
+function openGoalSheet(goal) {
+  goalDraft = goal ? { ...goal } : { name: '', target: 0, source: 'manual', saved: 0, monthly: 0, deadline: null };
+  $('gsheet').hidden = false;
+  $('gTitle').textContent = goal ? 'Edit goal' : 'New goal';
+  $('gTarget').value = goalDraft.target ? String(goalDraft.target) : ''; $('gSaved').value = goalDraft.saved ? String(goalDraft.saved) : '';
+  $('gMonthly').value = goalDraft.monthly ? String(goalDraft.monthly) : ''; $('gDeadline').value = goalDraft.deadline || '';
+  $('gErr').textContent = ''; $('gCancel').textContent = goal ? 'Delete this goal' : 'Cancel'; $('gCancel').classList.toggle('danger', !!goal);
+  renderGoalSheet();
+  if (!reduced) { $('gform').animate([{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: 420, easing: RISE }); $('gsheetBg').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260 }); }
 }
-function renderCardSheet() {
-  const d = cardDraft;
-  $('cPreview').outerHTML = cardHtml(d).replace('class="pcard"', 'class="pcard preview" id="cPreview"');
-  $('cBanks').innerHTML = BANKS.map((b) => `<button type="button" role="option" data-b="${esc(b)}" aria-selected="${b === d.bank}"${b === d.bank ? ' class="on"' : ''}>${esc(b)}</button>`).join('');
-  $('cBankShow').textContent = d.bank || 'Choose one'; $('cBankShow').classList.toggle('none', !d.bank);
-  for (const b of document.querySelectorAll('#cBrand button')) b.classList.toggle('on', b.dataset.b === d.brand);
-  $('cStyles').innerHTML = Object.entries(PRESETS).map(([k, v]) => `<button type="button" data-s="${k}" aria-label="${k}" style="background:${v}"${!d.image && d.style === k ? ' class="on"' : ''}></button>`).join('');
-  $('cBgShow').textContent = d.image ? 'Your photo' : HEX_OK.test(d.style) ? 'Custom colour' : d.style[0].toUpperCase() + d.style.slice(1);
-  $('cNoPhoto').hidden = !d.image;
+function renderGoalSheet() {
+  const d = goalDraft;
+  $('gNames').innerHTML = GOAL_NAMES.map((n) => `<button type="button" role="option" data-n="${esc(n)}" aria-selected="${n === d.name}"${n === d.name ? ' class="on"' : ''}>${esc(n)}</button>`).join('');
+  $('gNameShow').textContent = d.name || 'Choose one'; $('gNameShow').classList.toggle('none', !d.name);
+  const items = allAssets().filter((a) => a.kind === 'savings' || a.kind === 'investment');
+  const opts = [['manual', 'Typed in'], ['savings', 'All my savings'], ['investments', 'All my investments'], ...items.map((a) => [String(a.id), a.name])];
+  $('gSources').innerHTML = opts.map(([v, n]) => `<button type="button" role="option" data-s="${esc(v)}" aria-selected="${v === d.source}"${v === d.source ? ' class="on"' : ''}>${esc(n)}</button>`).join('');
+  $('gSavedRow').hidden = d.source !== 'manual';
 }
-function closeCardSheet() {
-  if ($('csheet').hidden) return;
-  const was = cardDraft; cardDraft = null;
-  if (reduced) { $('csheet').hidden = true; return; }
-  $('cform').animate([{ transform: 'none' }, { transform: 'translateY(100%)' }], { duration: 260, easing: 'cubic-bezier(.4, 0, 1, 1)' }).onfinish = () => { if (!cardDraft) $('csheet').hidden = true; };
-  $('csheetBg').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260 });
-  return was;
+$('gNames').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { goalDraft.name = b.dataset.n; renderGoalSheet(); $('gErr').textContent = ''; } });
+$('gSources').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { goalDraft.source = b.dataset.s; renderGoalSheet(); } });
+function closeGoalSheet() {
+  if ($('gsheet').hidden) return;
+  goalDraft = null;
+  if (reduced) { $('gsheet').hidden = true; return; }
+  $('gform').animate([{ transform: 'none' }, { transform: 'translateY(100%)' }], { duration: 260, easing: 'cubic-bezier(.4, 0, 1, 1)' }).onfinish = () => { if (!goalDraft) $('gsheet').hidden = true; };
+  $('gsheetBg').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260 });
 }
-$('cBanks').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { cardDraft.bank = b.dataset.b; renderCardSheet(); } });
-$('cBrand').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { cardDraft.brand = b.dataset.b; renderCardSheet(); } });
-$('cStyles').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { cardDraft.style = b.dataset.s; cardDraft.image = null; renderCardSheet(); } });
-$('cColor').addEventListener('input', () => { cardDraft.style = $('cColor').value; cardDraft.image = null; renderCardSheet(); });
-$('cNoPhoto').addEventListener('click', () => { cardDraft.image = null; renderCardSheet(); });
-$('cLast4').addEventListener('input', () => { cardDraft.last4 = $('cLast4').value.replace(/\D/g, '').slice(0, 4); renderCardSheet(); });
-$('cNick').addEventListener('input', () => { cardDraft.nickname = $('cNick').value.slice(0, 30); renderCardSheet(); });
-// a photo becomes a card-shaped, small picture (the card ratio, 800 px wide) so it is light to store
-$('cPhoto').addEventListener('change', async () => {
-  const f = $('cPhoto').files && $('cPhoto').files[0];
-  $('cPhoto').value = '';
-  if (!f) return;
-  try {
-    const bmp = await createImageBitmap(f);
-    const W = 800, H = 504, c = document.createElement('canvas'); c.width = W; c.height = H;
-    const k = Math.max(W / bmp.width, H / bmp.height), sw = W / k, sh = H / k;   // fill the card, cropping the middle
-    c.getContext('2d').drawImage(bmp, (bmp.width - sw) / 2, (bmp.height - sh) / 2, sw, sh, 0, 0, W, H);
-    let q = 0.82, url = c.toDataURL('image/jpeg', q);
-    while (url.length > 240000 && q > 0.4) { q -= 0.1; url = c.toDataURL('image/jpeg', q); }
-    cardDraft.image = url; $('cErr').textContent = ''; renderCardSheet();
-  } catch (e) { $('cErr').textContent = 'That picture could not be used. Try another one.'; }
-});
-$('cardAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } openCardSheet(null); });
-$('cardRail').addEventListener('click', (e) => { if (e.target.closest('#cardEmpty') && user && cardsReady) openCardSheet(null); });
-$('cardEdit').addEventListener('click', () => { const c = shownCard(); if (c) openCardSheet(c); });
-$('csheetBg').addEventListener('click', closeCardSheet);
-$('cX').addEventListener('click', closeCardSheet);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCardSheet(); });
-$('cform').addEventListener('submit', async (e) => {
+$('goalAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } openGoalSheet(null); });
+$('goalList').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); const g = li && goals.find((x) => x.id === li.dataset.id); if (g) openGoalSheet(g); });
+$('gsheetBg').addEventListener('click', closeGoalSheet);
+$('gX').addEventListener('click', closeGoalSheet);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGoalSheet(); });
+$('gform').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const d = cardDraft;
-  if (!d.bank) { $('cErr').textContent = 'Choose the bank from the list'; return; }
-  if (!/^\d{4}$/.test(d.last4)) { $('cErr').textContent = 'Type the last four digits of the card'; return; }
-  const row = { bank: d.bank, brand: d.brand, last4: d.last4, nickname: d.nickname.trim(), style: d.style, image: d.image || null };
-  $('cSave').disabled = true;
-  const { error } = d.id ? await sb.from('cards').update(row).eq('id', d.id) : await sb.from('cards').insert({ ...row, user_id: user.id, position: cards.length });
-  $('cSave').disabled = false;
-  if (error) { $('cErr').textContent = fail(error); return; }
-  closeCardSheet(); await loadCards();
+  const d = goalDraft, target = parseMoney($('gTarget').value), saved = $('gSaved').value.trim() ? parseMoney($('gSaved').value) : 0, monthly = $('gMonthly').value.trim() ? parseMoney($('gMonthly').value) : 0;
+  if (!d.name) { $('gErr').textContent = 'Choose a name from the list'; return; }
+  if (target === null || !(target > 0)) { $('gErr').textContent = 'Type the amount you want to reach, like 3000'; return; }
+  if (saved === null || saved < 0 || monthly === null || monthly < 0) { $('gErr').textContent = 'Amounts must be positive numbers'; return; }
+  const row = { name: d.name, target, source: d.source, saved: d.source === 'manual' ? saved : 0, monthly, deadline: $('gDeadline').value || null };
+  $('gSave').disabled = true;
+  const { error } = d.id ? await sb.from('goals').update(row).eq('id', d.id) : await sb.from('goals').insert({ ...row, user_id: user.id });
+  $('gSave').disabled = false;
+  if (error) { $('gErr').textContent = fail(error); return; }
+  closeGoalSheet(); await loadGoals();
 });
-$('cCancel').addEventListener('click', async () => {
-  const d = cardDraft;
+$('gCancel').addEventListener('click', async () => {
+  const d = goalDraft;
   if (d && d.id) {
-    if (!confirm('Delete this card from the app?')) return;
-    const { error } = await sb.from('cards').delete().eq('id', d.id);
-    if (error) { $('cErr').textContent = fail(error); return; }
-    closeCardSheet(); await loadCards();
-  } else closeCardSheet();
+    if (!confirm(`Delete the goal "${d.name}"?`)) return;
+    const { error } = await sb.from('goals').delete().eq('id', d.id);
+    if (error) { $('gErr').textContent = fail(error); return; }
+    closeGoalSheet(); await loadGoals();
+  } else closeGoalSheet();
 });
 
 // ---- who is signed in
@@ -821,7 +758,7 @@ function onSession(session) {
     // not inside the auth callback: it holds the auth lock. Then, with a bank connected, read it (the function paces itself) and show what it found.
     setTimeout(() => load(true).then(() => bankSync(false)).then((fresh) => fresh && load(false)), 0);
   } else {
-    store.clear(); link = null; renderBank(); assets = []; bankAssets = []; assetsLoaded = true; closeAssetForm(); renderWealth(); cards = []; renderCards();
+    store.clear(); link = null; renderBank(); assets = []; bankAssets = []; assetsLoaded = true; closeAssetForm(); renderWealth(); goals = []; renderGoals();
     data = { balance: 0, history: [0, 0], accounts: 0, thin: true, loaded: true };
     accStep = 'idle'; renderAccount(); render(false);
   }
@@ -907,9 +844,11 @@ Keypad.attach($('mEdit'), { decimal: true });
 Keypad.attach($('asValue'), { decimal: true });
 Keypad.attach($('asInvested'), { decimal: true });
 Keypad.attach($('asRate'), { decimal: true, max: 5 });
-Keypad.attach($('cLast4'), { decimal: false, max: 4 });
+Keypad.attach($('gTarget'), { decimal: true });
+Keypad.attach($('gSaved'), { decimal: true });
+Keypad.attach($('gMonthly'), { decimal: true });
 Keypad.attach($('accIn'), { decimal: false, max: 10, when: () => accStep === 'code' });
-renderCards();
+renderGoals();
 renderLock();
 if (root.classList.contains('locked')) setTimeout(tryUnlock, 500);   // the cover is already up (lock.js ran first)
 showTab('money');

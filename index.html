@@ -24,7 +24,7 @@
 </script>
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=26">
+<link rel="stylesheet" href="web.css?v=27">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -93,19 +93,15 @@
         </div>
       </section>
 
-      <!-- pay: a gallery of your cards (typed in by you), unlocked with your fingerprint or face -->
-      <section class="view" id="v-pay">
-        <div class="bar top"><span class="label">Pay</span><span id="payTag"></span></div>
-        <div id="cardsCard" class="notch" data-bl="1">
-          <i data-ic="lock"></i>
-          <div class="ch"><span class="k">My cards</span><button class="pillbtn" id="cardEdit" type="button" hidden>Edit</button></div>
-          <div id="cardRail" class="rail" aria-label="Your cards"></div>
-          <div id="cardDots" class="dots" aria-hidden="true"></div>
-          <button class="mplus" id="cardAdd" type="button" aria-label="Add a card"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
+      <!-- goals: what you are saving for, and when you will get there -->
+      <section class="view" id="v-goals">
+        <div class="bar top"><span class="label">Goals</span><span id="gTag"></span></div>
+        <div id="goalsCard" class="notch" data-bl="1">
+          <i data-ic="calendar"></i>
+          <span class="k">My goals</span>
+          <ul id="goalList" class="alist"></ul>
+          <button class="mplus" id="goalAdd" type="button" aria-label="Add a goal"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
         </div>
-        <button class="pillbtn primary bigbtn" id="payGo" type="button" hidden>Unlock</button>
-        <a class="pillbtn bigbtn paylink" id="payWallet" href="https://wallet.google.com/" hidden>Open Google Wallet</a>
-        <small class="fine" id="payNote">Your cards unlock with your fingerprint, face or phone code.</small>
       </section>
 
       <!-- wealth: net worth, investments with their returns, and a growth calculator -->
@@ -180,7 +176,7 @@
     <nav id="dock" aria-label="Tabs">
       <span id="dockInd"></span>
       <button type="button" data-t="money" class="on"><i data-ic="wallet"></i><span>Money</span></button>
-      <button type="button" data-t="pay"><i data-ic="bank"></i><span>Pay</span></button>
+      <button type="button" data-t="goals"><i data-ic="calendar"></i><span>Goals</span></button>
       <button type="button" data-t="wealth"><i data-ic="invest"></i><span>Wealth</span></button>
       <button type="button" data-t="settings"><i data-ic="gear"></i><span>Settings</span></button>
     </nav>
@@ -215,34 +211,29 @@
   </form>
 </div>
 
-<!-- the card sheet: add or edit a card, with a live preview -->
-<div id="csheet" hidden>
-  <div id="csheetBg"></div>
-  <form id="cform" class="sheetpanel" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="cTitle">
+<!-- the goal sheet: add or edit a goal -->
+<div id="gsheet" hidden>
+  <div id="gsheetBg"></div>
+  <form id="gform" class="sheetpanel" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="gTitle">
     <div class="grab" aria-hidden="true"></div>
-    <div class="shhead"><b id="cTitle">New card</b><button type="button" id="cX" class="shx" aria-label="Close">&times;</button></div>
-    <div id="cPreview" class="pcard preview"></div>
+    <div class="shhead"><b id="gTitle">New goal</b><button type="button" id="gX" class="shx" aria-label="Close">&times;</button></div>
     <div class="shgroup">
-      <div class="srow"><span>Bank</span><b id="cBankShow" class="shval none">Choose one</b></div>
-      <div class="opts" id="cBanks" role="listbox" aria-label="Bank"></div>
+      <div class="srow"><span>Goal</span><b id="gNameShow" class="shval none">Choose one</b></div>
+      <div class="opts" id="gNames" role="listbox" aria-label="Goal"></div>
     </div>
-    <div class="seg" id="cBrand" role="group" aria-label="Brand"><button type="button" data-b="visa" class="on">Visa</button><button type="button" data-b="mastercard">Mastercard</button><button type="button" data-b="cb">CB</button><button type="button" data-b="other">Other</button></div>
+    <div class="amtbox"><span class="k">I want to reach</span><div class="amtin"><i>&euro;</i><input id="gTarget" inputmode="decimal" maxlength="12" placeholder="0" aria-label="Amount to reach in euros"></div></div>
     <div class="shgroup">
-      <label class="srow"><span>Last 4 digits</span><input id="cLast4" inputmode="numeric" maxlength="4" placeholder="1234"></label>
-      <label class="srow"><span>Name on the card</span><input id="cNick" maxlength="30" placeholder="My card"></label>
+      <div class="srow"><span>Counts</span><b class="shval">What you have set aside</b></div>
+      <div class="opts" id="gSources" role="listbox" aria-label="What counts toward the goal"></div>
+      <label class="srow" id="gSavedRow"><span>Saved so far</span><input id="gSaved" inputmode="decimal" maxlength="12" placeholder="0 &euro;"></label>
     </div>
     <div class="shgroup">
-      <div class="srow"><span>Background</span><b id="cBgShow" class="shval">Lilac</b></div>
-      <div class="swatchrow" id="cStyles"></div>
-      <div class="bgbtns">
-        <label class="pillbtn">Photo<input id="cPhoto" type="file" accept="image/*" hidden></label>
-        <label class="pillbtn">Colour <input id="cColor" type="color" value="#7a4fe0"></label>
-        <button type="button" class="pillbtn" id="cNoPhoto" hidden>Remove photo</button>
-      </div>
+      <label class="srow"><span>Saving each month<small>Optional</small></span><input id="gMonthly" inputmode="decimal" maxlength="12" placeholder="0 &euro;"></label>
+      <label class="srow"><span>Deadline<small>Optional</small></span><input id="gDeadline" type="date"></label>
     </div>
-    <p class="err" id="cErr" role="alert"></p>
-    <button class="pillbtn primary bigbtn" id="cSave" type="submit">Save</button>
-    <button class="shlink" id="cCancel" type="button">Cancel</button>
+    <p class="err" id="gErr" role="alert"></p>
+    <button class="pillbtn primary bigbtn" id="gSave" type="submit">Save</button>
+    <button class="shlink" id="gCancel" type="button">Cancel</button>
   </form>
 </div>
 
@@ -256,9 +247,10 @@
 <script defer src="config.js"></script>
 <script defer src="icons.js"></script>
 <script defer src="notch.js?v=6"></script>
+<script defer src="goals.js?v=1"></script>
 <script defer src="wealth.js?v=3"></script>
-<script defer src="lock.js?v=3"></script>
+<script defer src="lock.js?v=4"></script>
 <script defer src="keypad.js?v=4"></script>
-<script defer src="app.js?v=38"></script>
+<script defer src="app.js?v=39"></script>
 </body>
 </html>
