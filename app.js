@@ -45,7 +45,7 @@ function paintBlob() {
 }
 const loadBlob = (tries = 3) => import('./bloub/view.js').then(({ createBlob }) => {
   mb = createBlob($('mBlob'), { color: 'creme', paper: '#000000', facing: 'right' });
-  paintBlob(); mb.start(); mb.setExpression('money'); mb.look(null);
+  paintBlob(); mb.setExpression('money'); mb.look(null); blobRuns();
   window.islandTheme.onChange(paintBlob);
   document.addEventListener('mousemove', (e) => mb.look(e.clientX, e.clientY));
   document.addEventListener('mouseleave', () => mb.look(null));
@@ -53,6 +53,10 @@ const loadBlob = (tries = 3) => import('./bloub/view.js').then(({ createBlob }) 
   if (!reduced && tab === 'money') blobEntrance($('mBlob'));
 }).catch((e) => { console.error('blob', e); if (tries > 1) setTimeout(() => loadBlob(tries - 1), 1500); });   // no blob: the numbers still work
 loadBlob();
+
+// the blob draws 30 times a second: only while the Money tab is on screen
+const blobRuns = () => { if (mb) { if (tab === 'money' && !document.hidden) mb.start(); else mb.stop(); } };
+document.addEventListener('visibilitychange', blobRuns);
 
 // ---- the island's entrance: things rise in turn, the blob pops in, the number counts up, the line draws itself
 const rise = (els, delay = 0, gap = 55) => { if (!reduced) els.forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 560, delay: delay + i * gap, easing: RISE, fill: 'backwards' })); };
@@ -79,8 +83,8 @@ function drawIn() {
 }
 // the cards of a screen spring open when it comes into view
 const notchIn = (root) => { if (!reduced && window.notchReplay) root.querySelectorAll('.notch').forEach((el, i) => setTimeout(() => notchReplay(el), 60 + i * 80)); };
-function enter(view) {
-  notchIn($('v-' + view));
+function enter(view, withNotch = false) {
+  if (withNotch) notchIn($('v-' + view));
   if (view === 'money') {
     rise([$('mBal'), $('mChart')], 30, 80);
     if (mb) blobEntrance($('mBlob'));
@@ -147,7 +151,8 @@ function showTab(t) {
   for (const v of document.querySelectorAll('.view')) v.classList.toggle('on', v.id === 'v-' + t);
   moveInd();
   if (t === 'money') sizeChart();
-  if (!first) { enter(t); if (t === 'money' && user) refresh(); }
+  blobRuns();
+  if (!first) { enter(t, true); if (t === 'money' && user) refresh(); }
 }
 $('dock').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) showTab(b.dataset.t); });
 new ResizeObserver(moveInd).observe($('dock'));
@@ -362,11 +367,10 @@ content.addEventListener('touchmove', (e) => {
     if (dy < 8) return;
     pull.on = true;
   }
-  if (e.cancelable) e.preventDefault();
   pull.p = Math.max(0, (dy - 8) * 0.55);
   ptr.classList.remove('spin');
   ptrSet(pull.p, false);
-}, { passive: false });
+}, { passive: true });   // passive: a listener that may cancel makes the browser wait for it on every touch, which made scrolling feel laggy
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Letting go reloads the whole page, like a browser refresh: new code from the site arrives too, and the saved balance is shown at once.
 async function reloadNow() {

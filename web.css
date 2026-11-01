@@ -101,7 +101,6 @@ body.loading #mbNote.sk { min-width: 90px; min-height: 12px; }
 #ptr svg { width: 20px; height: 20px; }
 @keyframes ptrspin { to { transform: rotate(360deg); } }
 #ptr.spin svg { animation: ptrspin .8s linear infinite; }
-#views { will-change: transform; }
 
 /* ---- settings on a phone: big, one thing per line, easy to hit with a thumb ---- */
 @media (max-width: 560px) {
