@@ -14,7 +14,7 @@ const CACHE_KEY = 'money.last';
 if (!localStorage.getItem('island.settings')) window.islandTheme.set({ theme: 'auto', palette: 'lilac' });
 
 const round2 = (n) => Math.round(n * 100) / 100;
-const eur = (n) => (n < 0 ? '−' : '') + '€' + Math.abs(Math.round(n)).toLocaleString('en-US');
+const eur = (n) => (n < 0 ? '−' : '') + '€' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });   // exact, to the cent: the number your bank shows
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const fail = (e) => (e && e.message) || String(e);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -234,6 +234,7 @@ $('accForm').addEventListener('submit', async (e) => {
 
 // ---- the balance: the total is the last day of balance_history, which the database keeps up to date
 let link = null;   // the connected bank (a bank_links row), or null
+let lastBal = [];   // what the bank answered at the last sync: which balances it gave and which one is shown
 let shared = [];   // the accounts the bank shared (bank_accounts rows that came from the link)
 async function load(animate) {
   const [a, h, l] = await Promise.all([
@@ -360,6 +361,14 @@ function renderBank() {
     $('bankText').innerHTML = `${esc(link.bank_name)}${small(bankNote || (link.last_error ? 'The last sync failed, try again' : `${link.synced_at ? 'Synced ' + ago(link.synced_at) : 'Syncing...'} · approved until ${until}`), !!link.last_error || bankBad)}`;
     $('bankBtn').textContent = 'Disconnect'; $('bankBtn').classList.remove('primary'); $('bankForm').hidden = true;
   }
+  // which balance is shown: the one after all operations if the bank gives it; the others are listed so you can compare with your bank's app
+  const BAL = { XPCD: 'expected (pending operations included)', ITBD: 'booked now', CLBD: 'booked at day end', OPBD: 'opening', CLAV: 'available', ITAV: 'available now' };
+  const cashBal = lastBal.find((d) => d.kind === 'cash') || lastBal[0];
+  $('bankBal').hidden = !link || expired || !cashBal;
+  if (cashBal) {
+    const shown = cashBal.balances.find((b) => b.type === cashBal.used), others = cashBal.balances.filter((b) => b.type !== cashBal.used);
+    $('bankBal').textContent = `Your balance is the ${BAL[cashBal.used] || cashBal.used} one: ${shown ? eur(shown.amount) : ''}.${others.length ? ' Your bank also gives: ' + others.map((b) => `${BAL[b.type] || b.type} ${eur(b.amount)}`).join(', ') + '.' : ''}`;
+  }
   // which accounts the bank shared: if a livret is missing here, the bank did not share it (tick it at the bank and share again)
   const KIND = { cash: 'current', savings: 'savings', investment: 'investment', debt: 'loan' };
   $('bankMore').hidden = !link || expired;
@@ -369,7 +378,7 @@ function renderBank() {
 async function bankSync(force) {
   if (!link || bankBusy || link.last_error === 'expired') return false;
   bankBusy = true; renderBank();
-  try { const r = await bankCall('/sync', 'POST', { force }); return r.synced > 0; }
+  try { const r = await bankCall('/sync', 'POST', { force }); if (r.details && r.details.length) lastBal = r.details; return r.synced > 0; }
   catch (e) { bankNote = fail(e); bankBad = true; return false; }
   finally { bankBusy = false; renderBank(); }
 }
