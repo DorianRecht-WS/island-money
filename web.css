@@ -415,3 +415,14 @@ body.loading #nwAmount, body.loading #mNwAmount, body.loading #nwNote, body.load
 #bankMore { display: block; min-height: 40px; padding: 4px 0 var(--sp-3); text-align: left; }
 #v-settings .bar.foot { margin-top: var(--sp-1); padding: var(--sp-3) var(--sp-1) var(--sp-2); }
 .setrow:has(> .seg) > span, .setrow:has(> .swatches) > span { flex: none; }
+
+/* goal bars: each goal's own colour (the one of its chip), green once reached, amber when behind, on a track that shows in both themes */
+#goalList .pbar { background: color-mix(in srgb, var(--text-hi) 11%, transparent); height: 6px; }
+#goalList .pbar > i { box-shadow: none; }
+
+/* no browser overlay on a tap (the blue or grey square), no text selection, and no focus box after a click */
+* { -webkit-tap-highlight-color: transparent; }
+body, #pill { -webkit-touch-callout: none; }
+#pill :not(input):not(textarea):not(select) { -webkit-user-select: none; user-select: none; }
+:focus:not(:focus-visible) { outline: none; }
+li[role="button"], .notch, button { touch-action: manipulation; }
