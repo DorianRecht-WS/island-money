@@ -185,14 +185,16 @@ body.out #nwBar, body.out #nwLegend { opacity: .3; }
 .chips button { background: var(--surface); border: 1px solid var(--line-2); color: var(--text-2); border-radius: var(--r-pill); padding: 8px 12px; font-size: var(--fs-meta); cursor: pointer; min-height: 36px; }
 .chips button:hover { color: var(--text-hi); border-color: var(--accent); }
 
-/* the rates card */
-#ratesCard { padding: var(--sp-4); }
-#ratesCard .ch { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); padding-right: 34px; min-height: 22px; }
-#ratesCard .k { display: block; }
-.rnote { font-size: var(--fs-micro); color: var(--text-4); letter-spacing: .04em; }
-.rlabel { margin: var(--sp-4) 0 2px; font-size: var(--fs-micro); letter-spacing: .08em; text-transform: uppercase; color: var(--text-4); font-weight: 500; }
-.rlabel small { text-transform: none; letter-spacing: 0; margin-left: 6px; }
-.rlist li { cursor: default; min-height: 48px; padding: 10px 0; }
-.rlist .main b { font-size: var(--fs-body); }
-.rlist small em { font-style: normal; font-weight: 600; }
 #pjChips { margin-top: var(--sp-3); }
+
+/* the yearly growth card on the Money tab */
+#gwCard { padding: var(--sp-3) var(--sp-4); }
+#gwCard .k { display: block; }
+#gwAmount { display: block; margin: 2px 0 1px; font-size: 24px; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; color: var(--ok); font-variant-numeric: tabular-nums; }
+#gwAmount.down { color: var(--danger); }
+#gwNote { display: block; font-size: var(--fs-meta); color: var(--text-3); padding-right: 34px; }
+#gwList { margin-top: var(--sp-2); }
+#gwList li { min-height: 44px; padding: 8px 0; cursor: default; }
+#gwList li.more { color: var(--text-3); font-size: var(--fs-meta); min-height: 32px; display: block; }
+#asRates { margin-top: -2px; }
+.rt { font-style: normal; font-weight: 500; font-size: var(--fs-meta); color: var(--ok); }

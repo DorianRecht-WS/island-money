@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=16">
+<link rel="stylesheet" href="web.css?v=17">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -60,6 +60,14 @@
           <b id="mNwAmount">&euro;0</b>
           <small id="mNwNote"></small>
         </button>
+        <div id="gwCard" class="notch">
+          <i data-ic="trend"></i>
+          <span class="k">Yearly growth</span>
+          <b id="gwAmount">+&euro;0</b>
+          <small id="gwNote">What your savings and investments earn in a year</small>
+          <ul id="gwList" class="alist rlist"></ul>
+          <small class="fine" id="gwFine"></small>
+        </div>
         <div id="mChart" class="notch">
           <i data-ic="trend"></i>
           <div class="ch"><span class="k">Last 30 days</span><span id="mbNote" class="sk"></span></div>
@@ -110,19 +118,12 @@
             <input class="field" id="asInvested" inputmode="decimal" placeholder="Put in (&euro;)" maxlength="14" aria-label="Amount put in">
             <input class="field" id="asValue" inputmode="decimal" placeholder="Worth now (&euro;)" maxlength="14" aria-label="Worth now" required>
             <input class="field wide" id="asRate" inputmode="decimal" placeholder="Interest rate, % per year (optional)" maxlength="6" aria-label="Interest rate in percent per year">
+            <div class="chips wide" id="asRates"></div>
+            <small class="fine wide" id="asRatesNote"></small>
             <button class="pillbtn primary" id="asSave" type="submit">Save</button>
             <button class="pillbtn" id="asCancel" type="button">Cancel</button>
             <p class="err wide" id="asErr" role="alert"></p>
           </form>
-        </div>
-        <div id="ratesCard" class="notch">
-          <i data-ic="bank"></i>
-          <div class="ch"><span class="k">Rates</span><span id="ratesNote" class="rnote"></span></div>
-          <div class="rlabel">Savings in France</div>
-          <ul id="rateSavings" class="alist rlist"></ul>
-          <div class="rlabel">Markets <small>change over 1 year</small></div>
-          <ul id="rateMarkets" class="alist rlist"></ul>
-          <small class="fine" id="ratesFine"></small>
         </div>
         <div id="projCard" class="notch">
           <i data-ic="trend"></i>
@@ -196,6 +197,6 @@
 <script defer src="icons.js"></script>
 <script defer src="notch.js?v=5"></script>
 <script defer src="wealth.js?v=2"></script>
-<script defer src="app.js?v=20"></script>
+<script defer src="app.js?v=21"></script>
 </body>
 </html>

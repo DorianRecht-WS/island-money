@@ -413,7 +413,8 @@ const allAssets = () => bankAssets.concat(assets.map((a) => ({ ...a, value: grow
 const KIND_COLOR = { cash: 'var(--accent)', investment: 'var(--accent-2)', savings: 'var(--ok)', property: 'var(--warn)', debt: 'var(--danger)' };
 const signed = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + eur(Math.abs(n));
 const pct = (x, digits = 1) => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x * 100).toFixed(digits) + '%';
-let editingAsset = null;   // the asset being edited, or 'new'
+let editingAsset = null;
+let yourMix = null;   // the blended yearly rate of all savings and investments, in percent   // the asset being edited, or 'new'
 
 function renderWealth() {
   const all = allAssets(), t = Wealth.totals(data.balance, all);
@@ -437,9 +438,22 @@ function renderWealth() {
   $('assetList').innerHTML = all.map((a) => {
     const gn = a.kind === 'investment' ? Wealth.gain(a.invested, a.value) : null, yr = a.kind === 'investment' && a.since ? Wealth.yearly(a.invested, a.value, a.since) : null;
     const sub = gn ? `${pct(gn.pct)}${yr !== null ? ` · ${pct(yr)}/yr` : ''}` : a.fromBank ? `${Wealth.KINDS[a.kind]} · from your bank` : `${Wealth.KINDS[a.kind]}${a.rate ? ` · ${a.rate}%/yr` : ''}`;
-    return `<li${a.fromBank ? ' class="bank"' : ` data-id="${esc(a.id)}" tabindex="0"`}><i style="background:${KIND_COLOR[a.kind]}"></i><div class="main"><b>${esc(a.name)}</b><small${gn ? ` class="${gn.amount >= 0 ? 'up' : 'down'}"` : ''}>${sub}</small></div><span class="amt">${a.kind === 'debt' ? '−' : ''}${eur(a.value)}</span></li>`;
+    return `<li${a.fromBank ? ' class="bank"' : ` data-id="${esc(a.id)}" tabindex="0"`}><i style="background:${KIND_COLOR[a.kind]}"></i><div class="main"><b>${esc(a.name)}</b><small${gn ? ` class="${gn.amount >= 0 ? 'up' : 'down'}"` : ''}>${sub}</small></div><span class="amt">${a.kind === 'debt' ? '−' : ''}${eur(a.value)}${a.rate && a.kind !== 'debt' ? `<em class="rt"> + ${a.rate}%</em>` : ''}</span></li>`;
   }).join('') || '<li class="empty">Add an investment, a savings account, property or a debt to see your net worth.</li>';
+  renderGrowth(all);
   renderProjection();
+}
+
+// the yearly growth card: each account at its own rate, added up
+function renderGrowth(all) {
+  const g = Wealth.growth(all);
+  $('gwAmount').textContent = user ? `${signed(g.perYear)} a year` : '€-';
+  $('gwAmount').className = g.perYear < 0 ? 'down' : '';
+  $('gwNote').textContent = !user ? 'Sign in to see it' : g.items.length ? `${pct(g.pct)} on ${eur(g.base)} · about ${signed(Wealth.r2(g.perYear / 12))} a month` : 'Add a rate to your savings (or investments with a start date) to see it';
+  $('gwList').innerHTML = g.items.slice(0, 3).map((i) => `<li><i style="background:${KIND_COLOR[i.kind]}"></i><div class="main"><b>${esc(i.name)}</b><small>${(i.rate * 100).toFixed(2).replace(/0$/, '')}% on ${eur(i.value)} · ${i.from === 'rate' ? 'your rate' : 'return so far'}</small></div><span class="amt ${i.perYear >= 0 ? 'up' : 'down'}">${signed(i.perYear)}</span></li>`).join('') + (g.items.length > 3 ? `<li class="more">+${g.items.length - 3} more in Wealth</li>` : '');
+  $('gwFine').textContent = g.missing.length ? `Not counted, no rate yet: ${g.missing.join(', ')}. Add the rate in Wealth.` : (g.items.length ? 'An estimate from today’s rates: rates and markets change, and interest is not paid out evenly.' : '');
+  // the calculator can use this mix as its yearly return
+  yourMix = g.items.length ? Math.round(g.pct * 1000) / 10 : null;
 }
 
 // ---- adding and editing: tap a row to change what it is worth today
@@ -452,6 +466,7 @@ function openAssetForm(a) {
   $('asSince').value = a ? a.since : ymd(new Date());
   $('asErr').textContent = ''; $('asCancel').textContent = a ? 'Delete' : 'Cancel';
   $('asChips').hidden = !!a;   // quick names only when adding
+  renderRates(); loadRates();
   $('asName').focus();
 }
 function closeAssetForm() { editingAsset = null; $('assetForm').hidden = true; $('assetAdd').textContent = 'Add'; }
@@ -466,7 +481,8 @@ $('asChips').addEventListener('click', (e) => {
   $('asRate').value = known ? String(known.rate) : '';
   $('asValue').focus();
 });
-$('asKind').addEventListener('change', () => { $('asInvested').placeholder = $('asKind').value === 'investment' ? 'Put in (€)' : 'Put in (optional)'; });
+$('asRates').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) $('asRate').value = b.dataset.r; });
+$('asKind').addEventListener('change', () => { renderRates(); $('asInvested').placeholder = $('asKind').value === 'investment' ? 'Put in (€)' : 'Put in (optional)'; });
 $('assetForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const value = parseMoney($('asValue').value), invText = $('asInvested').value.trim(), invested = invText ? parseMoney(invText) : 0;
@@ -502,19 +518,29 @@ async function loadAssets() {
 const RATES_API = `${url}/functions/v1/rates`, RATES_KEY = 'money.rates';
 let rates = null;
 try { const c = JSON.parse(localStorage.getItem(RATES_KEY)); if (c && c.body) rates = c.body; } catch { /* none saved */ }
-const pc = (x) => (x === null || x === undefined ? '–' : pct(x));
 const ratesAge = () => { try { return JSON.parse(localStorage.getItem(RATES_KEY)).at; } catch { return 0; } };
+// the rates live where you add something: official savings rates for a savings item, five-year market averages for an investment
 function renderRates() {
-  if (!rates) { $('rateSavings').innerHTML = '<li class="empty">Loading rates...</li>'; $('rateMarkets').innerHTML = ''; return; }
-  const s = rates.savings;
-  $('rateSavings').innerHTML = s.rates.map((r) => `<li><div class="main"><b>${esc(r.name)}</b><small>${esc(r.note)}</small></div><span class="amt">${r.rate}%</span></li>`).join('');
-  $('rateMarkets').innerHTML = rates.markets.map((m) => `<li><div class="main"><b>${esc(m.name)}</b><small>This year <em class="${m.retYtd >= 0 ? 'up' : 'down'}">${pc(m.retYtd)}</em> · 5 years <em class="${m.ret5y >= 0 ? 'up' : 'down'}">${pc(m.ret5y)}</em> a year</small></div><span class="amt ${m.ret1y >= 0 ? 'up' : 'down'}">${pc(m.ret1y)}</span></li>`).join('') || '<li class="empty">Market figures are not available right now.</li>';
-  const until = new Date(s.until).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  $('ratesFine').textContent = `${s.outdated ? 'These savings rates may have changed since ' + until + '. ' : `Savings rates apply until ${until}. `}Markets: price change over one year, dividends not included, delayed. Past results promise nothing.`;
-  $('ratesNote').textContent = ratesAge() ? `Updated ${ago(new Date(ratesAge()).toISOString())}` : '';
-  // one tap puts a rate into the calculator below
-  const sel = [['Livret A', s.rates.find((r) => r.id === 'livret-a')?.rate], ...rates.markets.filter((m) => m.ret5y != null).map((m) => [`${m.name.split(' (')[0]} 5y`, Math.round(m.ret5y * 1000) / 10])].filter((x) => x[1] != null);
-  $('pjChips').innerHTML = sel.map(([n, r]) => `<button type="button" data-r="${r}">${esc(n)} ${r}%</button>`).join('');
+  const kind = $('asKind').value, wrap = $('asRates');
+  let list = [], note = '';
+  if (rates && kind === 'savings') {
+    list = rates.savings.rates.map((r) => [r.name.replace(' (opened in 2026)', ''), r.rate]);
+    const until = new Date(rates.savings.until).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    note = rates.savings.outdated ? `These rates may have changed since ${until}.` : `Official rates, until ${until}. Livret Jeune: at least this, your bank sets it.`;
+  } else if (rates && kind === 'investment') {
+    list = rates.markets.filter((m) => m.ret5y != null).map((m) => [m.name.split(' (')[0] + ', 5-year average', Math.round(m.ret5y * 1000) / 10]);
+    note = 'Average per year over five years, price only. Past results promise nothing.';
+  }
+  wrap.innerHTML = list.map(([n, r]) => `<button type="button" data-r="${r}">${esc(n)} ${r}%</button>`).join('');
+  $('asRatesNote').textContent = note;
+  // the calculator's one-tap rates
+  if (rates) {
+    const sel = [];
+    if (yourMix !== null) sel.push(['Your mix', yourMix]);
+    const la = rates.savings.rates.find((r) => r.id === 'livret-a'); if (la) sel.push(['Livret A', la.rate]);
+    const w = rates.markets.find((m) => m.id === 'world' && m.ret5y != null); if (w) sel.push(['MSCI World, 5y', Math.round(w.ret5y * 1000) / 10]);
+    $('pjChips').innerHTML = sel.map(([n, r]) => `<button type="button" data-r="${r}">${esc(n)} ${r}%</button>`).join('');
+  }
 }
 async function loadRates(force) {
   if (!force && rates && Date.now() - ratesAge() < 30 * 60 * 1000) { renderRates(); return; }
@@ -525,7 +551,7 @@ async function loadRates(force) {
     rates = await res.json();
     try { localStorage.setItem(RATES_KEY, JSON.stringify({ at: Date.now(), body: rates })); } catch { /* not saved */ }
     renderRates();
-  } catch (e) { console.error(e); if (!rates) $('rateSavings').innerHTML = '<li class="empty">Rates are not available right now.</li>'; }
+  } catch (e) { console.error(e); }   // no rates: the form just has no rate buttons
 }
 $('pjChips').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { $('pjRate').value = b.dataset.r; $('pjRate').dispatchEvent(new Event('input')); } });
 

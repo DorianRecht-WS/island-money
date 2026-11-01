@@ -57,6 +57,24 @@ const Wealth = (() => {
     return (to / from) ** (365.25 / days) - 1;
   }
 
-  return { r2, KINDS, totals, gain, yearly, project, grow, annualised };
+  // How much your savings and investments grow in a year, from the rate of each one: the rate you typed in, or for an investment
+  // without one, the yearly return it has actually made. Items with neither (and debts) are left out and listed, so the total is honest.
+  function growth(assets, today = new Date()) {
+    const items = [], missing = [];
+    let base = 0, perYear = 0;
+    for (const a of assets || []) {
+      if (a.kind === 'debt' || !(a.value > 0)) continue;
+      const fromRate = a.rate > 0 ? a.rate / 100 : null;
+      const rate = fromRate !== null ? fromRate : (a.kind === 'investment' && a.since ? yearly(a.invested, a.value, a.since, today) : null);
+      if (rate === null) { if (!a.fromBank) missing.push(a.name); continue; }
+      const per = a.value * rate;
+      items.push({ name: a.name, kind: a.kind, value: a.value, rate, perYear: r2(per), from: fromRate !== null ? 'rate' : 'return' });
+      base += a.value; perYear += per;
+    }
+    items.sort((x, y) => y.perYear - x.perYear);
+    return { perYear: r2(perYear), base: r2(base), pct: base > 0 ? perYear / base : 0, items, missing };
+  }
+
+  return { r2, KINDS, totals, gain, yearly, project, grow, annualised, growth };
 })();
 if (typeof module !== 'undefined') module.exports = Wealth; else window.Wealth = Wealth;
