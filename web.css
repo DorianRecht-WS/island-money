@@ -208,15 +208,21 @@ body.out #nwBar, body.out #nwLegend { opacity: .3; }
 #v-settings .group:nth-child(3) { --chip: var(--c-violet); }
 #v-settings .group:nth-child(4) { --chip: var(--c-sky); }
 #v-settings .group:nth-child(5) { --chip: var(--c-red); }
-#lockCard { --chip: var(--c-violet); }
 
-/* ---- the lock cover ---- */
-#lock { position: fixed; inset: 0; z-index: 200; display: none; place-items: center; padding: 24px; background: var(--page); }
-html.locked #lock { display: grid; }
-html.locked #pill, html.locked #sheet { visibility: hidden; }
-#lockCard { position: relative; width: min(340px, 100%); padding: 30px 22px 14px; text-align: center; display: flex; flex-direction: column; gap: 8px; }
-#lockCard b { font-size: 20px; color: var(--text-hi); margin-top: 6px; letter-spacing: -.01em; }
-#lockCard small { font-size: var(--fs-body); color: var(--text-3); min-height: 36px; line-height: 1.4; }
+/* ---- the lock cover: the app itself, blurred, with a lock chip on top ---- */
+#lock { position: fixed; inset: 0; z-index: 200; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px;
+  background: color-mix(in srgb, var(--bg) 35%, transparent); touch-action: manipulation; }
+html.locked #lock { display: flex; }
+html.locked #pill { filter: blur(22px); transform: scale(1.03); pointer-events: none; }
+html.locked #sheet, html.locked #kp { visibility: hidden; }
+.lockchip { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .35); animation: lockpulse 2.2s ease-in-out infinite; }
+.lockchip i { display: contents; }
+.lockchip svg { width: 34px; height: 34px; }
+@keyframes lockpulse { 50% { transform: scale(1.06); } }
+#lockMsg { font-size: var(--fs-body); color: var(--text-hi); text-shadow: 0 1px 8px var(--bg); }
+#lock .shlink { position: absolute; bottom: calc(18px + env(safe-area-inset-bottom)); color: var(--text-2); }
+@media (prefers-reduced-motion: reduce) { .lockchip { animation: none; } }
 .bigbtn { width: 100%; min-height: 48px; font-size: 15px; }
 .shlink { background: none; border: 0; color: var(--text-3); font: inherit; font-size: var(--fs-meta); padding: 12px; cursor: pointer; min-height: 44px; }
 .shlink:hover { color: var(--text); }
@@ -255,3 +261,25 @@ html.locked #pill, html.locked #sheet { visibility: hidden; }
 .sheetpanel .fine { margin: 0; flex: none; }
 .sheetpanel .err { color: var(--danger); font-size: var(--fs-meta); margin: 0; flex: none; }
 .sheetpanel .err:empty { display: none; }
+
+/* ---- the number keypad: the app's own, from the bottom of the screen ---- */
+#kp { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 160; width: min(480px, 100%); display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  padding: 10px var(--sp-3) calc(10px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); box-shadow: 0 -10px 30px rgba(0, 0, 0, .3); animation: kpup .26s var(--ease); user-select: none; }
+#kp[hidden] { display: none; }
+@keyframes kpup { from { transform: translate(-50%, 100%); } }
+.kpk { height: 52px; border: 0; border-radius: 14px; background: var(--surface-2); color: var(--text-hi); font: 600 22px var(--font); cursor: pointer; display: grid; place-items: center; touch-action: manipulation; transition: transform .08s, background .12s; }
+.kpk:active { transform: scale(.94); background: var(--line-2); }
+.kpk svg { width: 26px; height: 26px; }
+.kpk.dot, .kpk.back { background: var(--surface); }
+.kpdone { grid-column: 1 / -1; height: 50px; border: 0; border-radius: var(--r-pill); background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: var(--on-accent); font: 700 16px var(--font); cursor: pointer; }
+body.kp-open #views { padding-bottom: 330px; }
+body.kp-open .sheetpanel { padding-bottom: 330px; }
+
+/* the name: a list to pick from, never free text */
+.shval { font-weight: 600; color: var(--text-hi); font-size: 14px; }
+.shval.none { color: var(--text-4); font-weight: 400; }
+.opts { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 14px; }
+.opts button { background: var(--surface); border: 1px solid var(--line-2); color: var(--text-2); border-radius: var(--r-pill); padding: 8px 14px; font-size: var(--fs-meta); cursor: pointer; min-height: 38px; }
+.opts button:hover { color: var(--text-hi); border-color: var(--accent); }
+.opts button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.srow > span small { display: block; font-size: var(--fs-micro); color: var(--text-4); margin-top: 1px; }

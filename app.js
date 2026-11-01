@@ -186,6 +186,7 @@ function renderAccount() {
   if (signedIn) $('accAv').textContent = ((user.email || '?')[0] || '?').toUpperCase();
   $('accForm').hidden = signedIn || accStep === 'idle';
   $('accBtn').classList.toggle('primary', !signedIn && accStep === 'idle');
+  if (window.Keypad && inp._kpOpts) queueMicrotask(() => Keypad.refresh(inp));
   $('accGo').disabled = accBusy;
   const small = (text, bad) => `<small${bad ? ' class="err"' : ''}>${esc(text)}</small>`;
   if (signedIn) {
@@ -279,7 +280,7 @@ function render(animate) {
   $('mBalance').title = user ? 'Click to change' : 'Sign in';
   if (!user && !pending) { $('mBalance').textContent = '€-'; say('Tap here to sign in'); drawChart(); return; }
   if (!animate) $('mBalance').textContent = eur(data.balance);
-  say(link ? `From ${link.bank_name}` : data.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
+  say(link ? '' : data.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
   drawChart();
   if (animate && tab === 'money') enter('money');
 }
@@ -325,6 +326,7 @@ $('mEdit').addEventListener('keydown', (e) => {
   else if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
 });
 $('mEdit').addEventListener('blur', () => { if (editing) saveEdit(); });
+$('mEdit').addEventListener('kpdone', () => { if (editing) saveEdit(); });
 
 // ---- settings: the bank (Enable Banking through the `bank` Edge Function). The balance and transactions then come from the bank.
 const BANK_API = `${url}/functions/v1/bank`;
@@ -453,14 +455,13 @@ function openAssetForm(a) {
   const wasHidden = $('sheet').hidden;
   $('sheet').hidden = false; $('sheetTitle').textContent = a ? 'Edit' : 'New saving or investment';
   if (wasHidden && !reduced) { $('assetForm').animate([{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2, .9, .3, 1)' }); $('sheetBg').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260 }); }
-  $('asName').value = a ? a.name : ''; $('asKind').value = a ? a.kind : 'investment'; syncKind();
+  $('asName').value = a ? a.name : ''; $('asKind').value = a ? a.kind : 'savings'; syncKind();
   $('asInvested').value = a ? String(a.invested) : ''; $('asValue').value = a ? String(grown(a)) : '';
   $('asRate').value = a && a.rate ? String(a.rate) : '';
+  rateAuto = false;
   $('asSince').value = a ? a.since : ymd(new Date());
   $('asErr').textContent = ''; $('asCancel').textContent = a ? 'Delete' : 'Cancel'; $('asCancel').classList.toggle('danger', !!a);
-  $('asChips').hidden = !!a;   // quick names only when adding
   renderRates(); loadRates();
-  if (!a) $('asName').focus();   // (not when editing: the keyboard would hide the sheet)
 }
 function closeAssetForm() {
   editingAsset = null;
@@ -475,9 +476,12 @@ function syncKind() {
   const kind = $('asKind').value;
   for (const b of document.querySelectorAll('#asKindSeg button')) b.classList.toggle('on', b.dataset.k === kind);
   $('asInvestedBox').hidden = kind !== 'investment';
-  renderRates();
+  if ($('asName').value && !NAMES[kind].includes($('asName').value) && !(editingAsset && editingAsset !== 'new' && editingAsset.kind === kind && editingAsset.name === $('asName').value)) $('asName').value = '';
+  renderNames(); renderRates();
 }
-$('asKindSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { $('asKind').value = b.dataset.k; syncKind(); } });
+let rateAuto = false;   // the rate in the form came from an official name (so it goes when the name or type changes), not from you
+$('asKindSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { $('asKind').value = b.dataset.k; if (rateAuto) { $('asRate').value = ''; rateAuto = false; } syncKind(); } });
+$('asRate').addEventListener('input', () => { rateAuto = false; });
 $('mNw').addEventListener('click', () => showTab('wealth'));
 $('assetAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } openAssetForm(null); });
 $('sheetBg').addEventListener('click', closeAssetForm);
@@ -485,18 +489,36 @@ $('sheetX').addEventListener('click', closeAssetForm);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sheet').hidden) closeAssetForm(); });
 $('assetList').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); if (li && user) openAssetForm(assets.find((a) => a.id === li.dataset.id)); });
 $('assetList').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const li = e.target.closest('li[data-id]'); if (li && user) openAssetForm(assets.find((a) => a.id === li.dataset.id)); } });
-$('asChips').addEventListener('click', (e) => {
+// the name is always one of these (no free text); the official ones bring their official rate with them
+const NAMES = {
+  savings: ['Livret A', 'Livret Jeune', 'LDDS', 'LEP', 'PEL', 'CEL', 'Savings account', 'Term deposit'],
+  investment: ['PEA', 'PEA-PME', 'CTO', 'Assurance vie', 'PER', 'Crypto', 'SCPI', 'Stocks', 'ETF', 'Gold'],
+  property: ['Main home', 'Rental property', 'Land', 'Parking'],
+  debt: ['Mortgage', 'Car loan', 'Student loan', 'Consumer credit', 'Credit card'],
+};
+const OFFICIAL = { 'Livret A': 'livret-a', 'Livret Jeune': 'livret-jeune', LDDS: 'ldds', LEP: 'lep', PEL: 'pel', CEL: 'cel' };
+function renderNames() {
+  const kind = $('asKind').value, cur = $('asName').value;
+  const list = NAMES[kind].slice();
+  if (cur && !list.includes(cur) && editingAsset && editingAsset !== 'new' && editingAsset.kind === kind) list.unshift(cur);   // an older item keeps the name it already has
+  $('asNames').innerHTML = list.map((n) => `<button type="button" role="option" data-n="${esc(n)}" aria-selected="${n === cur}"${n === cur ? ' class="on"' : ''}>${esc(n)}</button>`).join('');
+  $('asNameShow').textContent = cur || 'Choose one';
+  $('asNameShow').classList.toggle('none', !cur);
+}
+$('asNames').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
-  $('asName').value = b.dataset.n; $('asKind').value = b.dataset.k; syncKind();
-  const known = rates && b.dataset.r && rates.savings.rates.find((r) => r.id === b.dataset.r);   // the official rate, when we have it
-  $('asRate').value = known ? String(known.rate) : '';
+  $('asName').value = b.dataset.n; renderNames(); $('asErr').textContent = '';
+  const known = rates && OFFICIAL[b.dataset.n] && rates.savings.rates.find((r) => r.id === OFFICIAL[b.dataset.n]);
+  if (known) { $('asRate').value = String(known.rate); rateAuto = true; }
+  else if (rateAuto) { $('asRate').value = ''; rateAuto = false; }   // a rate that came with the previous name does not stay
   $('asValue').focus();
 });
-$('asRates').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) $('asRate').value = b.dataset.r; });
+$('asRates').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { $('asRate').value = b.dataset.r; rateAuto = false; } });
 $('assetForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const value = parseMoney($('asValue').value), invText = $('asInvested').value.trim(), invested = invText ? parseMoney(invText) : 0;
   const kind = $('asKind').value;
+  if (!$('asName').value) { $('asErr').textContent = 'Choose a name from the list'; return; }
   if (value === null || value < 0 || invested === null || invested < 0) { $('asErr').textContent = 'Amounts must be positive numbers like 1250.50'; return; }
   const rateText = $('asRate').value.trim().replace(',', '.'), rate = rateText ? Number(rateText) : 0;
   if (!Number.isFinite(rate) || rate < 0 || rate > 100) { $('asErr').textContent = 'The interest rate is a percent a year, like 1.7'; return; }
@@ -555,29 +577,36 @@ async function loadRates(force) {
     renderRates();
   } catch (e) { console.error(e); }   // no rates: the form just has no rate buttons
 }
-// ---- the app lock (lock.js): your device's fingerprint, face or screen-lock code opens the app
+// ---- the app lock (lock.js): your device's fingerprint, face or screen-lock code opens the app.
+// While locked the app is still there behind a blur; the device is asked by itself, and a tap anywhere asks again (some phones only
+// show their prompt after a tap).
 const root = document.documentElement;
-let unlockCtl = null, hiddenAt = 0;   // unlockCtl: the unlock attempt in progress (a new tap on Unlock replaces it)
+let unlockCtl = null, hiddenAt = 0, unlockedAt = 0;   // unlockCtl: the attempt in progress (a new one replaces it)
+const AWAY_MS = 3000;   // away from the app for longer than this: locked when you come back
 const lockSay = (t) => { $('lockMsg').textContent = t; };
 async function tryUnlock() {
   if (!root.classList.contains('locked')) return;
   if (unlockCtl) unlockCtl.abort();
   const ctl = unlockCtl = new AbortController();
-  lockSay('Waiting for your fingerprint, face or phone code...');
-  try { await AppLock.verify(ctl.signal); if (ctl !== unlockCtl) return; root.classList.remove('locked'); blobRuns(); sizeChart(); }
-  catch (e) { if (ctl === unlockCtl) lockSay(e && e.name === 'NotAllowedError' ? 'Not unlocked. Tap Unlock to try again.' : 'Could not unlock. Tap Unlock to try again.'); }
+  lockSay('Unlocking...');
+  try { await AppLock.verify(ctl.signal); if (ctl !== unlockCtl) return; unlockedAt = Date.now(); hiddenAt = 0; root.classList.remove('locked'); blobRuns(); sizeChart(); }
+  catch (e) { if (ctl === unlockCtl) lockSay(e && e.name === 'NotAllowedError' ? 'Tap anywhere to unlock' : 'Could not unlock, tap anywhere to try again'); }
 }
 function lockNow() {
   if (!AppLock.enabled() || root.classList.contains('locked')) return;
-  closeAssetForm(); editing && endEdit();
-  lockSay('Use your fingerprint, face or phone code to open it.');
+  closeAssetForm(); if (editing) endEdit(); if (window.Keypad) Keypad.hide();
+  lockSay('Unlocking...');
   root.classList.add('locked');
-  setTimeout(tryUnlock, 250);
+  setTimeout(tryUnlock, 150);
 }
-$('lockGo').addEventListener('click', tryUnlock);
+$('lock').addEventListener('pointerdown', (e) => { if (!e.target.closest('#lockOut')) tryUnlock(); });
 $('lockOut').addEventListener('click', async () => { AppLock.disable(); root.classList.remove('locked'); await sb.auth.signOut(); renderLock(); });   // signed out: nothing of yours is on screen
-// away for a while (30 s): locked again when you come back
-document.addEventListener('visibilitychange', () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 30000) lockNow(); });
+// leaving the app starts the clock; coming back after more than a few seconds locks it (the device's own prompt does not count as leaving)
+const leave = () => { if (!hiddenAt && !unlockCtl && Date.now() - unlockedAt > 1500) hiddenAt = Date.now(); };
+const back = () => { if (hiddenAt && Date.now() - hiddenAt > AWAY_MS) lockNow(); hiddenAt = 0; };
+document.addEventListener('visibilitychange', () => (document.hidden ? leave() : back()));
+window.addEventListener('pagehide', leave);
+window.addEventListener('pageshow', (e) => { if (e.persisted && AppLock.enabled()) { hiddenAt = hiddenAt || Date.now() - AWAY_MS - 1; back(); } });   // brought back from the browser's page cache
 async function renderLock() {
   const ok = await AppLock.supported(), on = AppLock.enabled();
   $('lockSw').classList.toggle('on', on); $('lockSw').setAttribute('aria-checked', String(on));
@@ -692,6 +721,12 @@ renderAccount();
 renderBank();
 renderWealth();
 renderRates();
+// numbers come from the app's own keypad (the sign-in code too, but not the email)
+Keypad.attach($('mEdit'), { decimal: true });
+Keypad.attach($('asValue'), { decimal: true });
+Keypad.attach($('asInvested'), { decimal: true });
+Keypad.attach($('asRate'), { decimal: true, max: 5 });
+Keypad.attach($('accIn'), { decimal: false, max: 10, when: () => accStep === 'code' });
 renderLock();
 if (root.classList.contains('locked')) setTimeout(tryUnlock, 500);   // the cover is already up (lock.js ran first)
 showTab('money');
