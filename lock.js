@@ -2,8 +2,7 @@
 // When you turn it on, the device makes a key that only unlocks with you; later "unlock" asks the device to prove it is you again.
 // Honest limit: this keeps people who pick up your phone out of the app. It is not a vault: the check runs on this device, so someone
 // with the tools to take apart the page could skip it. Your data stays protected by the sign-in and by Supabase either way.
-const AppLock = (() => {
-  const KEY = 'money.lock';
+const makeLock = (KEY) => {
   const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const unb64 = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
   const read = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
@@ -40,5 +39,6 @@ const AppLock = (() => {
   }
   const disable = () => { try { localStorage.removeItem(KEY); } catch { /* ignore */ } };
   return { supported, enabled, enable, verify, disable };
-})();
-window.AppLock = AppLock;
+};
+window.AppLock = makeLock('money.lock');   // opens the app
+window.PayLock = makeLock('money.pay');   // opens the card on the Pay tab

@@ -24,7 +24,7 @@
 </script>
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=21">
+<link rel="stylesheet" href="web.css?v=23">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -93,22 +93,18 @@
         </div>
       </section>
 
-      <!-- budget: a monthly limit per category, against what was spent this month -->
-      <section class="view" id="v-budget">
-        <div class="bar top"><span class="label">Budget</span><span id="bTag"></span></div>
-        <div id="bgCard" class="notch" data-bl="1">
-          <i data-ic="calendar"></i>
-          <span class="k" id="bgMonth">This month</span>
-          <div class="gwrow"><b id="bgSpent">&euro;0.00</b><span id="bgOf"></span></div>
-          <div id="bgBar" class="pbar" hidden><i></i></div>
-          <ul id="bgList" class="alist"></ul>
-          <button class="mplus" id="bgAdd" type="button" aria-label="Add a monthly limit"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
+      <!-- pay: your card, unlocked with your fingerprint or face, then Google Wallet opens ready to tap -->
+      <section class="view" id="v-pay">
+        <div class="bar top"><span class="label">Pay</span><span id="payTag"></span></div>
+        <div id="payCard" class="notch" data-locked="1">
+          <i data-ic="lock"></i>
+          <div class="paytop"><b>Island Pay</b><span id="payBank"></span></div>
+          <div class="paymid"><span class="paychip"></span><span id="payNum">&middot;&middot;&middot;&middot; &middot;&middot;&middot;&middot; &middot;&middot;&middot;&middot; &middot;&middot;&middot;&middot;</span></div>
+          <div class="paybot"><span id="payHolder">Your card</span><span id="payState">Locked</span></div>
         </div>
-        <div id="rcCard" class="notch">
-          <i data-ic="coins"></i>
-          <div class="ch"><span class="k">Latest spending</span><button class="pillbtn" id="payAdd" type="button">I just paid</button></div>
-          <ul id="rcList" class="alist"></ul>
-        </div>
+        <button class="pillbtn primary bigbtn" id="payGo" type="button">Unlock</button>
+        <a class="pillbtn bigbtn paylink" id="payWallet" href="https://wallet.google.com/" hidden>Open Google Wallet</a>
+        <small class="fine" id="payNote">Unlocks with your fingerprint, face or phone code. Then open your wallet and hold the phone to the reader.</small>
       </section>
 
       <!-- wealth: net worth, investments with their returns, and a growth calculator -->
@@ -183,7 +179,7 @@
     <nav id="dock" aria-label="Tabs">
       <span id="dockInd"></span>
       <button type="button" data-t="money" class="on"><i data-ic="wallet"></i><span>Money</span></button>
-      <button type="button" data-t="budget"><i data-ic="calendar"></i><span>Budget</span></button>
+      <button type="button" data-t="pay"><i data-ic="bank"></i><span>Pay</span></button>
       <button type="button" data-t="wealth"><i data-ic="invest"></i><span>Wealth</span></button>
       <button type="button" data-t="settings"><i data-ic="gear"></i><span>Settings</span></button>
     </nav>
@@ -218,25 +214,6 @@
   </form>
 </div>
 
-<!-- the budget sheet: set a limit, log a payment, or change a category -->
-<div id="bsheet" hidden>
-  <div id="bsheetBg"></div>
-  <form id="bform" class="sheetpanel" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="bTitle">
-    <div class="grab" aria-hidden="true"></div>
-    <div class="shhead"><b id="bTitle">Monthly limit</b><button type="button" id="bX" class="shx" aria-label="Close">&times;</button></div>
-    <div class="shgroup">
-      <div class="srow"><span>Category</span><b id="bCatShow" class="shval none">Choose one</b></div>
-      <div class="opts" id="bCats" role="listbox" aria-label="Category"></div>
-      <input type="hidden" id="bCat">
-    </div>
-    <div class="amtbox" id="bAmtBox"><span class="k" id="bAmtLabel">Per month</span><div class="amtin"><i>&euro;</i><input id="bAmt" inputmode="decimal" maxlength="12" placeholder="0" aria-label="Amount in euros"></div></div>
-    <small class="fine" id="bNote"></small>
-    <p class="err" id="bErr" role="alert"></p>
-    <button class="pillbtn primary bigbtn" id="bSave" type="submit">Save</button>
-    <button class="shlink" id="bCancel" type="button">Cancel</button>
-  </form>
-</div>
-
 <!-- the lock cover: the app stays visible behind it, blurred; the chip shows that it is waiting for you -->
 <div id="lock" role="dialog" aria-label="Island Money is locked">
   <div class="lockchip"><i data-ic="lock"></i></div>
@@ -247,10 +224,9 @@
 <script defer src="config.js"></script>
 <script defer src="icons.js"></script>
 <script defer src="notch.js?v=6"></script>
-<script defer src="budget.js?v=3"></script>
 <script defer src="wealth.js?v=3"></script>
-<script defer src="lock.js?v=2"></script>
+<script defer src="lock.js?v=3"></script>
 <script defer src="keypad.js?v=3"></script>
-<script defer src="app.js?v=33"></script>
+<script defer src="app.js?v=34"></script>
 </body>
 </html>
