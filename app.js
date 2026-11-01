@@ -77,7 +77,10 @@ function drawIn() {
   $('mbArea').animate([{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }], { duration: 1300, delay: 320, easing: 'cubic-bezier(.35, .1, .2, 1)', fill: 'backwards' });
   for (const id of ['mbDot', 'mbHalo']) $(id).animate([{ opacity: 0, transform: 'scale(.2)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 520, delay: 1500, easing: 'cubic-bezier(.2, 1.4, .3, 1)', fill: 'backwards' });
 }
+// the cards of a screen spring open when it comes into view
+const notchIn = (root) => { if (!reduced && window.notchReplay) root.querySelectorAll('.notch').forEach((el, i) => setTimeout(() => notchReplay(el), 60 + i * 80)); };
 function enter(view) {
+  notchIn($('v-' + view));
   if (view === 'money') {
     rise([$('mBal'), $('mChart')], 30, 80);
     if (mb) blobEntrance($('mBlob'));
@@ -90,7 +93,7 @@ let BW = 300, BH = 130;
 const BP = 8;
 let data = { balance: 0, history: [0, 0], accounts: 0, thin: true };
 const bx = (i) => BP + (i / (data.history.length - 1)) * (BW - BP * 2);
-const by = (v) => { const h = data.history, lo = Math.min(...h), hi = Math.max(...h); return BP + ((hi - v) / (hi - lo || 1)) * (BH - BP * 2); };
+const by = (v) => { const h = data.history, lo = Math.min(...h), hi = Math.max(...h); if (hi === lo) return BH / 2; return BP + ((hi - v) / (hi - lo || 1)) * (BH - BP * 2); };
 function smooth(pts) {
   let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
   for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (x0 + x1) / 2; d += ` C${m.toFixed(1)} ${y0.toFixed(1)} ${m.toFixed(1)} ${y1.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}`; }
@@ -110,7 +113,7 @@ function mark(i, hover) {
 function drawChart() {
   const h = data.history, pts = h.map((v, i) => [bx(i), by(v)]), line = smooth(pts);
   $('mbLine').setAttribute('d', line);
-  $('mbArea').setAttribute('d', `${line} L${pts[pts.length - 1][0].toFixed(1)} ${BH} L${BP} ${BH} Z`);
+  $('mbArea').setAttribute('d', data.thin ? '' : `${line} L${pts[pts.length - 1][0].toFixed(1)} ${BH} L${BP} ${BH} Z`);   // a flat line has nothing under it to fill
   mark(h.length - 1, false);
 }
 function sizeChart() {

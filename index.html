@@ -76,7 +76,8 @@
 
       <!-- settings, as in the island: the account (sign in with an emailed code), then how it looks -->
       <section class="view" id="v-settings">
-        <div class="group">
+        <div class="group notch">
+          <i data-ic="bank"></i>
           <span class="label">Account</span>
           <div class="setrow">
             <i class="av" id="accAv" hidden></i>
@@ -88,12 +89,14 @@
             <button class="pillbtn primary" id="accGo" type="submit">Send code</button>
           </form>
         </div>
-        <div class="group">
+        <div class="group notch">
+          <i data-ic="gear"></i>
           <span class="label">Appearance</span>
           <div class="setrow"><span>Theme</span><div class="seg" id="setTheme"><button data-v="dark" type="button">Dark</button><button data-v="light" type="button">Light</button><button data-v="auto" type="button">Auto</button></div></div>
           <div class="setrow"><span>Palette</span><div class="swatches" id="setPalette"></div></div>
         </div>
-        <div class="group" id="appGroup" hidden>
+        <div class="group notch" id="appGroup" hidden>
+          <i data-ic="add"></i>
           <span class="label">App</span>
           <div class="setrow"><span>Add to your home screen<small id="appSmall">Opens full screen, like an app</small></span><button class="pillbtn primary" id="appBtn" type="button">Install</button></div>
         </div>
@@ -111,7 +114,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script defer src="config.js"></script>
 <script defer src="icons.js"></script>
-<script defer src="notch.js?v=4"></script>
-<script defer src="app.js?v=7"></script>
+<script defer src="notch.js?v=5"></script>
+<script defer src="app.js?v=9"></script>
 </body>
 </html>
