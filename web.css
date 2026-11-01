@@ -302,3 +302,18 @@ body.kp-open .sheetpanel { padding-bottom: 330px; }
 .paylink { display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--text-hi); }
 .paylink[hidden], #payGo[hidden] { display: none; }
 #v-pay .fine { text-align: center; padding: 0 var(--sp-3); }
+
+/* ---- no scrollbars: pages still scroll, the bars just never show (they flickered when a tab's height changed) ---- */
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+/* ---- the skeleton of the other tabs: the same shimmering blocks as the Money tab ---- */
+.sk2, body.booting #accText, body.booting #bankText, body.booting #lockSmall { color: transparent !important; border-radius: var(--r-2); user-select: none; pointer-events: none;
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; }
+.skrow { pointer-events: none; cursor: default; }
+.skrow > i.sk2 { width: 8px; height: 8px; border-radius: 50%; }
+.skrow .main b.sk2, .skrow .main small.sk2 { display: inline-block; }
+body.loading #nwBar, body.loading #nwLegend { visibility: hidden; }
+body.booting #accText, body.booting #bankText, body.booting #lockSmall { display: inline-block; min-width: 150px; min-height: 14px; }
+@media (prefers-reduced-motion: reduce) { .sk2, body.booting #accText, body.booting #bankText, body.booting #lockSmall { animation: none; } }
+body.loading #nwAmount, body.loading #mNwAmount, body.loading #nwNote, body.loading #mNwNote, body.loading #gwAmount { width: fit-content; max-width: 100%; }

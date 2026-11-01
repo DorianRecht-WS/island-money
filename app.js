@@ -149,6 +149,7 @@ function showTab(t) {
   const first = !tab;
   document.documentElement.style.setProperty('--tab-dx', (TABS.indexOf(t) > TABS.indexOf(tab) ? 18 : -18) + 'px');
   tab = t;
+  $('views').scrollTop = 0;   // each tab starts at its top
   for (const b of document.querySelectorAll('#dock button')) b.classList.toggle('on', b.dataset.t === t);
   for (const v of document.querySelectorAll('.view')) v.classList.toggle('on', v.id === 'v-' + t);
   moveInd();
@@ -429,6 +430,7 @@ $('bankMore').addEventListener('click', () => { if (link && confirm('You will go
 $('bankSync').addEventListener('click', async () => { bankNote = ''; bankBad = false; if (await bankSync(true)) await load(false); });
 
 // ---- the Wealth tab: net worth, investments with their returns, and the growth calculator (the arithmetic is in wealth.js)
+let assetsLoaded = false;   // false until the first answer: the list shows a skeleton until then
 let assets = [];   // the user's own assets rows (investments, savings, property, debts), typed in
 let bankAssets = [];   // the same kinds of thing, but read from the bank's accounts (a livret, a PEA, a loan)
 // what each typed-in item is worth today: a rate makes it grow by itself from the day it was typed in (debts do not grow here)
@@ -439,6 +441,8 @@ const signed = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + eur(Math.abs(n));
 const pct = (x, digits = 1) => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x * 100).toFixed(digits) + '%';
 let editingAsset = null;   // the asset being edited, or 'new'
 
+// three grey rows where the list will be, while it loads
+const SK_ROWS = '<li class="skrow"><i class="sk2"></i><div class="main"><b class="sk2">Livret A name</b><small class="sk2">Savings 1.7%/yr</small></div><span class="amt sk2">\u20ac0,000.00</span></li>'.repeat(3);
 function renderWealth() {
   const all = allAssets(), t = Wealth.totals(data.balance, all);
   document.body.classList.toggle('out', !user && !pending);
@@ -454,6 +458,7 @@ function renderWealth() {
   $('nwBar').innerHTML = parts.map((p) => `<i style="flex:${(p[2] / own).toFixed(4)};background:${KIND_COLOR[p[0]]}"></i>`).join('');
   $('nwLegend').innerHTML = parts.concat(t.debt ? [['debt', 'Debts', t.debt]] : []).map((p) => `<span><i style="background:${KIND_COLOR[p[0]]}"></i>${p[1]} ${eur(p[2])}</span>`).join('');
 
+  if (user && !assetsLoaded) { $('assetList').innerHTML = SK_ROWS; renderGrowth(all); return; }
   $('assetList').innerHTML = all.map((a) => {
     const gn = a.kind === 'investment' ? Wealth.gain(a.invested, a.value) : null, yr = a.kind === 'investment' && a.since ? Wealth.yearly(a.invested, a.value, a.since) : null;
     const sub = gn ? `${pct(gn.pct)}${yr !== null ? ` · ${pct(yr)}/yr` : ''}` : a.fromBank ? `${Wealth.KINDS[a.kind]} · from your bank` : `${Wealth.KINDS[a.kind]}${a.rate ? ` · ${a.rate}%/yr` : ''}`;
@@ -564,6 +569,7 @@ $('asCancel').addEventListener('click', async () => {
 });
 async function loadAssets() {
   const r = await sb.from('assets').select('*').order('created_at');   // (all columns: works before and after the rate column)
+  assetsLoaded = true;
   assets = (r.data || []).map((a) => ({ ...a, invested: Number(a.invested), value: Number(a.value), rate: Number(a.rate) || 0, updated: a.updated_at || a.created_at }));   // (no table yet, before its migration: none)
   renderWealth();
 }
@@ -696,7 +702,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && tab
 function onSession(session) {
   const next = session ? session.user : null;
   const changed = (next && next.id) !== (user && user.id) || pending;
-  user = next; pending = false;
+  user = next; pending = false; document.body.classList.remove('booting');
   renderAccount();
   if (!changed) return;
   if (user) {
@@ -704,7 +710,7 @@ function onSession(session) {
     // not inside the auth callback: it holds the auth lock. Then, with a bank connected, read it (the function paces itself) and show what it found.
     setTimeout(() => load(true).then(() => bankSync(false)).then((fresh) => fresh && load(false)), 0);
   } else {
-    store.clear(); link = null; renderBank(); assets = []; bankAssets = []; closeAssetForm(); renderWealth();
+    store.clear(); link = null; renderBank(); assets = []; bankAssets = []; assetsLoaded = true; closeAssetForm(); renderWealth();
     data = { balance: 0, history: [0, 0], accounts: 0, thin: true, loaded: true };
     accStep = 'idle'; renderAccount(); render(false);
   }

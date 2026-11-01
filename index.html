@@ -24,7 +24,7 @@
 </script>
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=23">
+<link rel="stylesheet" href="web.css?v=24">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -39,7 +39,7 @@
 <link rel="modulepreload" href="bloub/skins.js">
 <link rel="modulepreload" href="bloub/states.js">
 </head>
-<body class="loading">
+<body class="loading booting">
 <!-- The island's own look, copied from ../ui: its tokens (island.css, theme.js), icons, blob (bloub/) and notched cards (notch.js).
      On a phone this is the whole screen, with the tabs at the bottom like an app; on a computer it is the island panel in the middle of the page. -->
 <div id="pill" class="open">
@@ -65,13 +65,13 @@
         <button id="mNw" class="notch" type="button" aria-label="Net worth, open the Wealth tab">
           <i data-ic="coins"></i>
           <span class="k">Net worth</span>
-          <b id="mNwAmount">&euro;0</b>
-          <small id="mNwNote"></small>
+          <b id="mNwAmount" class="sk">&euro;00,000.00</b>
+          <small id="mNwNote" class="sk">Savings &euro;0,000.00 &middot; investments &euro;0,000.00</small>
         </button>
         <div id="gwCard" class="notch">
           <i data-ic="trend"></i>
           <span class="k">Yearly growth</span>
-          <div class="gwrow"><b id="gwAmount">+&euro;0</b><span id="gwPct"></span></div>
+          <div class="gwrow"><b id="gwAmount" class="sk">+&euro;000.00 a year</b><span id="gwPct" class="sk">+0.0%</span></div>
         </div>
         <div id="mChart" class="notch">
           <i data-ic="trend"></i>
@@ -113,8 +113,8 @@
         <div id="nwCard" class="notch">
           <i data-ic="coins"></i>
           <span class="k">Net worth</span>
-          <b id="nwAmount">&euro;0</b>
-          <small id="nwNote">Your balance, investments, savings and property, minus debts</small>
+          <b id="nwAmount" class="sk">&euro;00,000.00</b>
+          <small id="nwNote" class="sk">Balance &euro;0,000.00 &middot; investments &euro;0,000.00</small>
           <div id="nwBar" aria-hidden="true"></div>
           <div id="nwLegend"></div>
         </div>
@@ -227,6 +227,6 @@
 <script defer src="wealth.js?v=3"></script>
 <script defer src="lock.js?v=3"></script>
 <script defer src="keypad.js?v=3"></script>
-<script defer src="app.js?v=34"></script>
+<script defer src="app.js?v=35"></script>
 </body>
 </html>
