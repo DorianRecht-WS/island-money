@@ -89,7 +89,8 @@ function enter(view, withNotch = false) {
     rise([$('mBal'), $('mChart')], 30, 80);
     if (mb) blobEntrance($('mBlob'));
     countUp($('mBalance'), data.balance, 1000, 200); drawIn();
-  } else if (view === 'wealth') rise([$('nwCard'), $('invCard'), $('projCard')], 30, 80);
+  } else if (view === 'budget') rise([$('bgCard'), $('rcCard')], 30, 80);
+  else if (view === 'wealth') rise([$('nwCard'), $('invCard'), $('projCard')], 30, 80);
   else rise([...document.querySelectorAll('#v-settings .group')], 30, 70);
 }
 
@@ -137,7 +138,7 @@ $('mbChart').addEventListener('pointerleave', () => mark(data.history.length - 1
 $('mbChart').addEventListener('pointerup', () => mark(data.history.length - 1, false));
 
 // ---- the tabs: the bottom bar, with the island's sliding indicator
-const TABS = ['money', 'wealth', 'settings'];
+const TABS = ['money', 'budget', 'wealth', 'settings'];
 let tab = '', user = null, editing = false, pending = true;   // pending: the saved session has not been read yet
 function moveInd() {
   const ind = $('dockInd'), b = document.querySelector('#dock > button.on');
@@ -153,6 +154,7 @@ function showTab(t) {
   moveInd();
   if (t === 'money') sizeChart();
   if (t === 'wealth') loadRates();
+  if (t === 'budget') loadBudget();
   blobRuns();
   if (!first) { enter(t, true); if (t === 'money' && user) refresh(); }
 }
@@ -260,6 +262,7 @@ async function load(animate) {
   data.thin = history.length < 2 || history.every((v) => v === history[0]);
   store.set({ uid: user.id, email: user.email || '', accounts: data.accounts, balance: data.balance, history: data.history, thin: data.thin });
   loadAssets();   // (not awaited: the balance is already on screen)
+  loadBudget();
   render(animate && !had);
   if (had && before !== data.balance && tab === 'money') { countUp($('mBalance'), data.balance, 700, 0, before); drawIn(); }   // the cached number was out of date
 }
@@ -647,6 +650,111 @@ $('lockSw').addEventListener('click', async () => {
   $('lockSw').disabled = false;
 });
 
+// ---- the Budget tab: a monthly limit per category, against what was spent this month (the arithmetic is in budget.js)
+let budgets = {};   // category -> monthly limit
+let monthTx = [];   // this month's operations
+let budgetReady = true;   // false before the budgets migration
+async function loadBudget() {
+  if (!user) { budgets = {}; monthTx = []; renderBudget(); return; }
+  const [b, t] = await Promise.all([
+    sb.from('budgets').select('category,monthly'),
+    sb.from('transactions').select('id,day,amount,category,note,external_id').gte('day', Budget.monthStart()).order('day', { ascending: false }).order('created_at', { ascending: false }).limit(500),
+  ]);
+  budgetReady = !b.error;
+  budgets = Object.fromEntries((b.data || []).map((r) => [r.category, Number(r.monthly)]));
+  monthTx = (t.data || []).map((r) => ({ ...r, amount: Number(r.amount) }));
+  renderBudget();
+}
+const CAT_COLOR = { Groceries: 'var(--c-green)', 'Eating out': 'var(--c-orange)', Fuel: 'var(--c-yellow)', Transport: 'var(--c-sky)', Shopping: 'var(--c-pink)', Bills: 'var(--c-violet)', Health: 'var(--c-red)', Leisure: 'var(--c-blue)', Home: 'var(--c-lime)', Other: 'var(--text-3)' };
+function renderBudget() {
+  const now = new Date(), s = Budget.summary(monthTx, budgets);
+  $('bgMonth').textContent = `${now.toLocaleString('en-GB', { month: 'long' })} · ${Budget.daysLeft(now)} days left`;
+  $('bTag').textContent = !user ? 'Signed out' : !budgetReady ? 'Needs the database update' : '';
+  $('bgSpent').textContent = user ? eur(s.spent) : '€-';
+  $('bgOf').textContent = s.rows.length ? `of ${eur(s.limit)}` : '';
+  const bar = $('bgBar');
+  bar.hidden = !s.rows.length;
+  bar.className = 'pbar ' + (s.spent > s.limit ? 'over' : s.pct >= 0.8 ? 'warn' : '');
+  bar.firstElementChild.style.width = Math.min(100, Math.round(s.pct * 100)) + '%';
+  $('bgList').innerHTML = s.rows.map((r) => `<li data-cat="${esc(r.category)}" tabindex="0"><i style="background:${CAT_COLOR[r.category]}"></i><div class="main"><b>${esc(r.category)}</b><small class="${r.state === 'over' ? 'down' : ''}">${eur(r.spent)} of ${eur(r.limit)}</small><div class="pbar ${r.state === 'over' ? 'over' : r.state === 'warn' ? 'warn' : ''}"><i style="width:${Math.min(100, Math.round(r.pct * 100))}%"></i></div></div><span class="amt ${r.left < 0 ? 'down' : ''}">${r.left < 0 ? 'over by ' + eur(-r.left) : eur(r.left) + ' left'}</span></li>`).join('')
+    + (s.rows.length && s.unbudgeted ? `<li class="more">${eur(s.unbudgeted)} spent in categories without a limit</li>` : '')
+    || '<li class="empty">Tap the + to give a category a monthly limit.</li>';
+  // the latest spending, to check the sorting and to correct it
+  const spend = monthTx.filter((t) => t.amount < 0 && !Budget.NOT_SPENT.has(t.category)).slice(0, 12);
+  $('rcList').innerHTML = spend.map((t) => `<li data-id="${esc(t.id)}" tabindex="0"><i style="background:${CAT_COLOR[Budget.SPEND.includes(t.category) ? t.category : 'Other']}"></i><div class="main"><b>${esc(t.note || t.category)}</b><small>${esc(t.day.slice(8))}/${esc(t.day.slice(5, 7))} · ${esc(Budget.SPEND.includes(t.category) ? t.category : 'Other')}${String(t.external_id || '').startsWith('quick:') ? ' · just paid, waiting for the bank' : ''}</small></div><span class="amt">${eur(t.amount)}</span></li>`).join('')
+    || '<li class="empty">Your spending this month shows here.</li>';
+}
+
+// one sheet for the three things you do: set a limit, log a payment, change a category
+let bMode = null, bPick = null;   // 'limit' | 'pay' | 'recat'; bPick: the row being re-sorted
+function openBudgetSheet(mode, opts = {}) {
+  bMode = mode; bPick = opts.row || null;
+  $('bsheet').hidden = false;
+  $('bTitle').textContent = mode === 'limit' ? (budgets[opts.category] ? 'Monthly limit' : 'New monthly limit') : mode === 'pay' ? 'I just paid' : 'Change category';
+  $('bAmtBox').hidden = mode === 'recat';
+  $('bAmtLabel').textContent = mode === 'limit' ? 'Per month' : 'Amount paid';
+  $('bCat').value = opts.category || '';
+  $('bAmt').value = mode === 'limit' && budgets[opts.category] ? String(budgets[opts.category]) : '';
+  $('bErr').textContent = '';
+  $('bNote').textContent = mode === 'pay' ? 'It counts now, and goes away by itself when your bank sends the same payment.' : mode === 'recat' ? `Every "${bPick ? bPick.note : ''}" payment will be sorted this way.` : 'Money in and moves between your accounts are not counted.';
+  $('bCancel').textContent = mode === 'limit' && budgets[opts.category] ? 'Remove this limit' : 'Cancel';
+  $('bCancel').classList.toggle('danger', mode === 'limit' && !!budgets[opts.category]);
+  renderBudgetCats();
+  if (!reduced) { $('bform').animate([{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: 420, easing: RISE }); $('bsheetBg').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260 }); }
+}
+function renderBudgetCats() {
+  const cur = $('bCat').value;
+  $('bCats').innerHTML = Budget.SPEND.map((c) => `<button type="button" role="option" data-c="${esc(c)}" aria-selected="${c === cur}"${c === cur ? ' class="on"' : ''}>${esc(c)}</button>`).join('');
+  $('bCatShow').textContent = cur || 'Choose one'; $('bCatShow').classList.toggle('none', !cur);
+}
+function closeBudgetSheet() {
+  if ($('bsheet').hidden) return;
+  bMode = null;
+  if (reduced) { $('bsheet').hidden = true; return; }
+  $('bform').animate([{ transform: 'none' }, { transform: 'translateY(100%)' }], { duration: 260, easing: 'cubic-bezier(.4, 0, 1, 1)' }).onfinish = () => { if (!bMode) $('bsheet').hidden = true; };
+  $('bsheetBg').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260 });
+}
+$('bCats').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { $('bCat').value = b.dataset.c; renderBudgetCats(); $('bErr').textContent = ''; } });
+$('bsheetBg').addEventListener('click', closeBudgetSheet);
+$('bX').addEventListener('click', closeBudgetSheet);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeBudgetSheet(); });
+$('bgAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } openBudgetSheet('limit'); });
+$('payAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } openBudgetSheet('pay'); });
+$('bgList').addEventListener('click', (e) => { const li = e.target.closest('li[data-cat]'); if (li) openBudgetSheet('limit', { category: li.dataset.cat }); });
+$('rcList').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); const row = li && monthTx.find((t) => t.id === li.dataset.id); if (row) openBudgetSheet('recat', { row, category: Budget.SPEND.includes(row.category) ? row.category : '' }); });
+$('bform').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const category = $('bCat').value;
+  if (!category) { $('bErr').textContent = 'Choose a category'; return; }
+  $('bSave').disabled = true;
+  let error = null;
+  if (bMode === 'recat') {
+    const key = Budget.merchantKey(bPick.note || '');
+    if (key) ({ error } = await sb.from('merchant_categories').upsert({ user_id: user.id, merchant: key, category }, { onConflict: 'user_id,merchant' }));
+    // this month's payments of that merchant move now; the next sync does the same for the rest
+    for (const t of monthTx.filter((t) => t.id === bPick.id || (key && Budget.merchantKey(t.note || '') === key))) if (!error) ({ error } = await sb.from('transactions').update({ category }).eq('id', t.id));
+  } else {
+    const amount = parseMoney($('bAmt').value);
+    if (amount === null || !(amount > 0)) { $('bErr').textContent = 'Type an amount like 120 or 42.50'; $('bSave').disabled = false; return; }
+    if (bMode === 'limit') ({ error } = await sb.from('budgets').upsert({ user_id: user.id, category, monthly: amount }, { onConflict: 'user_id,category' }));
+    else if (!data.accountId) { error = { message: 'Set your balance first' }; }
+    else ({ error } = await sb.from('transactions').insert({ user_id: user.id, account_id: data.accountId, day: ymd(new Date()), amount: -amount, category, note: 'Card payment', external_id: link ? 'quick:' + crypto.randomUUID() : null }));
+  }
+  $('bSave').disabled = false;
+  if (error) { $('bErr').textContent = fail(error); return; }
+  const wasPay = bMode === 'pay';
+  closeBudgetSheet();
+  if (wasPay) { const before = data.balance; await load(false); countUp($('mBalance'), data.balance, 600, 0, before); }
+  await loadBudget();
+});
+$('bCancel').addEventListener('click', async () => {
+  if (bMode === 'limit' && budgets[$('bCat').value]) {
+    const { error } = await sb.from('budgets').delete().eq('category', $('bCat').value);
+    if (error) { $('bErr').textContent = fail(error); return; }
+    closeBudgetSheet(); await loadBudget();
+  } else closeBudgetSheet();
+});
+
 // ---- who is signed in
 function onSession(session) {
   const next = session ? session.user : null;
@@ -659,7 +767,7 @@ function onSession(session) {
     // not inside the auth callback: it holds the auth lock. Then, with a bank connected, read it (the function paces itself) and show what it found.
     setTimeout(() => load(true).then(() => bankSync(false)).then((fresh) => fresh && load(false)), 0);
   } else {
-    store.clear(); link = null; renderBank(); assets = []; bankAssets = []; closeAssetForm(); renderWealth();
+    store.clear(); link = null; renderBank(); assets = []; bankAssets = []; closeAssetForm(); renderWealth(); loadBudget();
     data = { balance: 0, history: [0, 0], accounts: 0, thin: true, loaded: true };
     accStep = 'idle'; renderAccount(); render(false);
   }
@@ -745,7 +853,9 @@ Keypad.attach($('mEdit'), { decimal: true });
 Keypad.attach($('asValue'), { decimal: true });
 Keypad.attach($('asInvested'), { decimal: true });
 Keypad.attach($('asRate'), { decimal: true, max: 5 });
+Keypad.attach($('bAmt'), { decimal: true });
 Keypad.attach($('accIn'), { decimal: false, max: 10, when: () => accStep === 'code' });
+renderBudget();
 renderLock();
 if (root.classList.contains('locked')) setTimeout(tryUnlock, 500);   // the cover is already up (lock.js ran first)
 showTab('money');
