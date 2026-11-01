@@ -92,7 +92,7 @@ function notchReplay(el) {
     n.u = 1; n.v = 0; n.target = 1; notchRender(el);
     const opts = { duration: 650, easing: 'cubic-bezier(.2, 1.4, .3, 1)', fill: 'backwards' };
     if (n.chip) n.chip.animate([{ transform: 'rotate(70deg) scale(.3)', opacity: 0 }, { transform: 'rotate(-20deg) scale(1.18)', opacity: 1, offset: .6 }], opts);
-    if (n.chip2) n.chip2.animate([{ transform: 'rotate(0deg) scale(.4)', opacity: 0 }], opts);
+    if (n.chip2) n.chip2.animate([{ transform: 'scale(.5)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { ...opts, easing: 'cubic-bezier(.2, .9, .3, 1)', duration: 380 });   // the + only pops in: it does not spin
     return;
   }
   n.u = 0; n.v = 0; n.target = 1;

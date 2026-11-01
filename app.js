@@ -289,6 +289,14 @@ function refresh() {
 document.addEventListener('visibilitychange', () => { if (!document.hidden && tab === 'money') refresh(); });
 window.addEventListener('focus', () => { if (tab === 'money') refresh(); });
 
+// what changed lately, as two small pills under the balance: since yesterday and over the last seven days
+function renderStats() {
+  const h = data.history, el = $('mStats');
+  if (!user || data.thin || !h || h.length < 2) { el.hidden = true; return; }
+  const last = h[h.length - 1], pill = (label, v) => `<span class="${v >= 0 ? 'up' : 'down'}"><i>${label}</i>${signed(v)}</span>`;
+  el.innerHTML = pill('Today', last - h[h.length - 2]) + (h.length > 7 ? pill('7 days', last - h[h.length - 8]) : '');
+  el.hidden = false;
+}
 function say(text, bad) { $('mIO').textContent = text; $('mIO').classList.toggle('err', !!bad); }
 // the skeleton shows until everything on the Money tab is real (the fresh balance and the assets), so nothing pops in or grows afterwards
 let introWanted = false;
@@ -306,8 +314,8 @@ function render(animate) {
   $('mBalance').title = user ? 'Click to change' : 'Sign in';
   if (!user && !pending) { $('mBalance').textContent = '€-'; say('Tap here to sign in'); drawChart(); return; }
   if (!animate) $('mBalance').textContent = eur(data.balance);
-  say(link ? [link.bank_name, link.synced_at ? 'synced ' + ago(link.synced_at) : 'syncing...', pendingAdj ? `includes ${signed(pendingAdj)} not yet in your bank's data` : ''].filter(Boolean).join(' · ') : data.accounts ? 'Entered by hand · tap the amount to change it' : 'Tap the amount to set your balance');
-  drawChart();
+  say(link ? [link.bank_name + ' · ' + (link.synced_at ? 'synced ' + ago(link.synced_at) : 'syncing...'), pendingAdj ? `includes ${signed(pendingAdj)} not yet in your bank's data` : ''].filter(Boolean).join('\n') : data.accounts ? 'Entered by hand · tap the amount to change it' : 'Tap the amount to set your balance');
+  renderStats(); drawChart();
   if (animate) introWanted = true;
   syncLoading();
 }
