@@ -23,8 +23,8 @@
   } catch (e) { /* no storage: no lock */ }
 </script>
 <script src="theme.js?v=3"></script>
-<link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=34">
+<link rel="stylesheet" href="island.css?v=5">
+<link rel="stylesheet" href="web.css?v=36">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -62,17 +62,6 @@
             <small id="mIO" class="sk">Loading your balance</small>
           </div>
         </div>
-        <button id="mNw" class="notch" type="button" aria-label="Net worth, open the Wealth tab">
-          <i data-ic="coins"></i>
-          <span class="k">Net worth</span>
-          <b id="mNwAmount" class="sk">&euro;00,000.00</b>
-          <small id="mNwNote" class="sk">Savings &euro;0,000.00 &middot; investments &euro;0,000.00</small>
-        </button>
-        <div id="gwCard" class="notch">
-          <i data-ic="trend"></i>
-          <span class="k">Yearly growth</span>
-          <div class="gwrow"><b id="gwAmount" class="sk">+&euro;000.00 a year</b><span id="gwPct" class="sk">+0.0%</span></div>
-        </div>
         <div id="mChart" class="notch">
           <i data-ic="trend"></i>
           <div class="ch"><span class="k">Last 30 days</span><span id="mbNote" class="sk"></span></div>
@@ -90,6 +79,19 @@
             </svg>
             <div class="chartsk"></div>
           </div>
+        </div>
+        <div class="duo">
+        <button id="mNw" class="notch" type="button" aria-label="Net worth, open the Wealth tab">
+          <i data-ic="coins"></i>
+          <span class="k">Net worth</span>
+          <b id="mNwAmount" class="sk">&euro;00,000.00</b>
+          <small id="mNwNote" class="sk">Savings &euro;0,000.00 &middot; investments &euro;0,000.00</small>
+        </button>
+        <div id="gwCard" class="notch">
+          <i data-ic="trend"></i>
+          <span class="k">Yearly growth</span>
+          <div class="gwrow"><b id="gwAmount" class="sk">+&euro;000.00 a year</b><span id="gwPct" class="sk">+0.0%</span></div>
+        </div>
         </div>
       </section>
 
@@ -250,11 +252,11 @@
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script defer src="config.js"></script>
 <script defer src="icons.js"></script>
-<script defer src="notch.js?v=8"></script>
+<script defer src="notch.js?v=9"></script>
 <script defer src="goals.js?v=3"></script>
 <script defer src="wealth.js?v=3"></script>
 <script defer src="lock.js?v=4"></script>
 <script defer src="keypad.js?v=4"></script>
-<script defer src="app.js?v=50"></script>
+<script defer src="app.js?v=51"></script>
 </body>
 </html>

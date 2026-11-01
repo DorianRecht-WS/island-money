@@ -211,7 +211,7 @@ nav:not(:has(#cl.on)) #gear { margin-left: auto; }
 .notch { position: relative; }
 .notch::before { content: ""; position: absolute; inset: 0; z-index: 0; background: var(--card); border-radius: 13px;
   clip-path: var(--p, none); transition: background var(--t-fast); }
-.notch:hover::before { background: var(--surface-2); }
+@media (hover: hover) and (pointer: fine) { .notch:hover::before { background: var(--surface-2); } }
 .notch > * { position: relative; z-index: 1; }
 .notch > i { display: contents; }
 .notch > i > svg { position: absolute; top: 2px; right: 2px; width: 28px; height: 28px; padding: 6px; border-radius: 50%; background: var(--chip, var(--accent)); color: var(--on-accent);

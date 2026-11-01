@@ -470,7 +470,7 @@ function renderWealth() {
   $('nwNote').textContent = user ? `Balance ${eur(t.cash)}${t.inv ? ` · investments ${eur(t.inv)}` : ''}${t.sav ? ` · savings ${eur(t.sav)}` : ''}${t.debt ? ` · debts −${eur(t.debt)}` : ''}` : 'Sign in to see your net worth';
   // the same number on the Money tab: tap it to open Wealth
   $('mNwAmount').textContent = user || pending ? eur(t.net) : '€-';
-  $('mNwNote').textContent = user ? `Savings ${eur(t.sav)} · investments ${eur(t.inv)}${t.debt ? ` · debts −${eur(t.debt)}` : ''}` : 'Sign in to see it';
+  $('mNwNote').textContent = user ? `Savings ${eur(t.sav)}` : 'Sign in to see it';
   // the split of what you own, as one bar (debts are shown in the legend: they are not part of what you own)
   const parts = [['cash', 'Balance', Math.max(0, t.cash)], ['investment', 'Investments', t.inv], ['savings', 'Savings', t.sav], ['property', 'Property', t.prop]].filter((p) => p[2] > 0);
   const own = parts.reduce((s, p) => s + p[2], 0) || 1;
@@ -490,9 +490,9 @@ function renderWealth() {
 // the yearly growth card: each account at its own rate, added up
 function renderGrowth(all) {
   const g = Wealth.growth(all);
-  $('gwAmount').textContent = user ? `${signed(g.perYear)} a year` : '€-';
+  $('gwAmount').textContent = user ? signed(g.perYear) : '€-';
   $('gwAmount').classList.toggle('down', g.perYear < 0);
-  $('gwPct').textContent = !user ? '' : g.items.length ? pct(g.pct) : 'add a rate to a saving';
+  $('gwPct').textContent = !user ? '' : g.items.length ? `${pct(g.pct)} a year` : 'add a rate to a saving';
   $('gwPct').classList.toggle('none', !g.items.length); $('gwPct').classList.toggle('down', !!g.items.length && g.pct < 0);
 }
 
@@ -681,7 +681,7 @@ $('lockSw').addEventListener('click', async () => {
 const GOAL_NAMES = ['Holiday', 'Emergency fund', 'New phone', 'Car', 'Home deposit', 'Wedding', 'Education', 'Gift', 'Other'];
 const GOAL_HUES = ['var(--c-sky)', 'var(--c-pink)', 'var(--c-green)', 'var(--c-orange)', 'var(--c-violet)', 'var(--c-yellow)', 'var(--c-blue)', 'var(--c-red)', 'var(--c-lime)'];
 const OVER = 'over:';   // an "is over" goal keeps what it watches in its source, as over:balance, over:networth, over:savings, over:investments or over:<item id>
-let goals = [], goalsReady = true, goalDraft = null, goalsIntro = false, goalsLoaded = false; const goalFlipped = new Set();   // ids of the goals turned over to show their details
+let goals = [], goalsReady = true, goalDraft = null, goalsIntro = false, goalsLoaded = false; const goalOpen = new Set(); let goalsHtml = '';   // ids of the goals turned over to show their details
    // goalDraft: the goal being added or edited
 const monthYear = (d) => d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 const isOver = (g) => String(g.source || '').startsWith(OVER);
@@ -736,29 +736,29 @@ function renderGoals() {
   $('gTag').textContent = !user ? 'Signed out' : !goalsReady ? 'Needs the database update' : '';
   const views = goals.map(goalView), reached = views.filter((v) => v.done).length;
   $('gSum').textContent = goals.length ? `${goals.length} goal${goals.length > 1 ? 's' : ''} · ${reached} reached` : '';
-  if (user && !goalsLoaded) { $('goalList').innerHTML = '<li class="gtile gsk"><div class="sk2"></div></li><li class="gtile gsk"><div class="sk2"></div></li>'; return; }
-  $('goalList').innerHTML = goals.map((g, i) => {
-    const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.behind ? 'behind' : v.state === 'On track' ? 'ontrack' : '';
-    const bar = `<div class="pbar ${v.done ? '' : v.behind ? 'warn' : ''}"><i style="width:${pct}%"></i></div>`;
+  if (user && !goalsLoaded) { goalsHtml = ''; $('goalList').innerHTML = '<li class="gtile gsk"><div class="sk2"></div></li><li class="gtile gsk"><div class="sk2"></div></li>'; return; }
+  const html = goals.map((g, i) => {
+    const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.behind ? 'behind' : v.state === 'On track' ? 'ontrack' : '', hue = GOAL_HUES[i % GOAL_HUES.length], open = goalOpen.has(g.id);
     // the chip in the notch: a tick once the goal is reached, otherwise a ring that fills as the goal does
     const chip = v.done ? '<path d="M6.5 12.5l3.8 3.8 7.2-8.1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
       : `<circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-opacity=".3" stroke-width="2.4"/><circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="${Math.max(pct, 3)} 100" transform="rotate(-90 12 12)"/>`;
-    return `<li class="gtile notch${goalFlipped.has(g.id) ? ' flip' : ''}" style="--chip:${v.done ? 'var(--ok)' : GOAL_HUES[i % GOAL_HUES.length]}" data-id="${esc(g.id)}" tabindex="0" role="button" aria-pressed="${goalFlipped.has(g.id)}">
+    return `<li class="gtile notch${open ? ' open' : ''}" style="--chip:${v.done ? 'var(--ok)' : hue}" data-id="${esc(g.id)}" tabindex="0" role="button" aria-expanded="${open}">
       <i><svg viewBox="0 0 24 24" fill="none">${chip}</svg></i>
-      <div class="gin">
-        <div class="gface gfront">
-          <div class="gh"><i style="background:${GOAL_HUES[i % GOAL_HUES.length]}"></i><b>${esc(v.title)}</b><span class="gstate ${tone}">${esc(v.state)}</span></div>
-          <div class="gnum"><b>${eur(v.now)}</b><span>of ${eur(v.target)}</span></div>
-          ${bar}
-        </div>
-        <div class="gface gback">
-          <div class="gh"><i style="background:${GOAL_HUES[i % GOAL_HUES.length]}"></i><b>${esc(v.kind)}</b><button type="button" class="gedit" data-edit="1">Edit</button></div>
-          <div class="gfoot"><span>${esc(v.left)}</span><span>${esc(v.when)}</span></div>
-          ${v.hint ? `<small class="gline">${esc(v.hint)}</small>` : ''}
-        </div>
+      <div class="gmain">
+        <div class="gh"><i style="background:${hue}"></i><b>${esc(v.title)}</b><span class="gstate ${tone}">${esc(v.state)}</span></div>
+        <div class="gnum"><b>${eur(v.now)}</b><span>of ${eur(v.target)}</span></div>
+        <div class="pbar ${v.done ? '' : v.behind ? 'warn' : ''}"><i style="width:${pct}%"></i></div>
       </div>
+      <div class="gdw"><div class="gdet"><div class="gin">
+        <div class="gfoot"><span>${esc(v.kind)}</span><span>${esc(v.left)}</span></div>
+        <div class="gfoot"><span>${v.done ? 'Done' : 'Estimated'}</span><span>${esc(v.when) || '&ndash;'}</span></div>
+        ${v.hint ? `<small class="gline">${esc(v.hint)}</small>` : ''}
+        <button type="button" class="pillbtn gedit" data-edit="1">Edit goal</button>
+      </div></div></div>
     </li>`;
-  }).join('') || `<li class="empty">${user ? (goalsReady ? 'Tap the + to add something you are saving for.' : 'Needs the database update.') : 'Sign in to add your goals.'}</li>`;
+  }).join('') || `<li class="empty">${user ? (goalsReady ? 'Tap Add a goal to start something you are saving for.' : 'Needs the database update.') : 'Sign in to add your goals.'}</li>`;
+  if (html === goalsHtml) return;   // nothing changed: leave the cards alone (rebuilding them was a flicker)
+  goalsHtml = html; $('goalList').innerHTML = html;
   for (const li of $('goalList').querySelectorAll('li.notch')) notchAttach(li);
   if (goalsIntro && tab === 'goals') { goalsIntro = false; rise([...$('goalList').children], 30); notchIn($('goalList')); }
 }
@@ -806,8 +806,8 @@ $('goalAdd').addEventListener('click', () => { if (!user) { showTab('settings');
 $('goalList').addEventListener('click', (e) => {
   const li = e.target.closest('li[data-id]'); const g = li && goals.find((x) => x.id === li.dataset.id); if (!g) return;
   if (e.target.closest('[data-edit]')) { openGoalSheet(g); return; }
-  const on = li.classList.toggle('flip'); li.setAttribute('aria-pressed', on);
-  on ? goalFlipped.add(g.id) : goalFlipped.delete(g.id);
+  const on = li.classList.toggle('open'); li.setAttribute('aria-expanded', on);
+  on ? goalOpen.add(g.id) : goalOpen.delete(g.id);
 });
 $('goalList').addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('li.gtile')) { e.preventDefault(); e.target.click(); } });
 $('gsheetBg').addEventListener('click', closeGoalSheet);

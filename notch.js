@@ -70,6 +70,7 @@ function notchSet(el, open) {
 }
 const notchRO = new ResizeObserver((entries) => {
   for (const e of entries) {
+    if (!e.target.isConnected) { notchRO.unobserve(e.target); continue; }
     const n = notchState.get(e.target), W = e.target.offsetWidth, H = e.target.offsetHeight;
     if (!n || !W) continue;
     n.g = notchGeom(W, H);
@@ -80,6 +81,8 @@ const notchRO = new ResizeObserver((entries) => {
 // whenever its screen comes into view.
 function notchAttach(el) {
   notchState.set(el, { g: null, u: 1, v: 0, target: 1, raf: 0, chip: el.querySelector(':scope > i > svg'), chip2: el.querySelector(':scope > .mplus') });
+  const n = notchState.get(el), W = el.offsetWidth;
+  if (W) { n.g = notchGeom(W, el.offsetHeight); notchRender(el); }
   notchRO.observe(el);
 }
 function notchReplay(el) {

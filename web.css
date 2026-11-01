@@ -323,28 +323,95 @@ body.loading #nwAmount, body.loading #mNwAmount, body.loading #nwNote, body.load
 /* each goal is a tile: its name and state, the amount against its target, a bar, then what is left and when */
 .gsum { display: block; margin: 2px 0 var(--sp-3); font-size: var(--fs-meta); color: var(--text-3); }
 #goalsCard { padding: 0 var(--sp-1); }
-#goalList { display: flex; flex-direction: column; gap: 10px; list-style: none; margin: 0; padding: 0; }
-#goalList li.gtile { display: block; border: 0; padding: 0 14px; background: none; border-radius: 13px; cursor: pointer; perspective: 900px; }
+#goalList { display: flex; flex-direction: column; gap: var(--sp-3); list-style: none; margin: 0; padding: 0; }
+#goalList li.gtile { display: block; border: 0; padding: 14px 16px; background: none; cursor: pointer; min-height: 0; }
 #goalList li.empty { background: none; padding: 6px 0; display: block; color: var(--text-3); }
-/* a goal is a flat row; a click turns it over vertically to show the details, another click turns it back */
-.gin { display: grid; transform-style: preserve-3d; transition: transform .55s var(--ease); }
-.gtile.flip .gin { transform: rotateX(180deg); }
-.gface { grid-area: 1 / 1; padding: 12px 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
-.gback { transform: rotateX(180deg); }
-.gh { display: flex; align-items: center; gap: 8px; padding-right: 22px; }
+/* a goal: name and state, the amount against its target, a bar; a tap opens the details under it in place, another tap closes them */
+.gmain { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.gh { display: flex; align-items: center; gap: 8px; padding-right: 30px; min-width: 0; }
 .gh i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .gh b { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; color: var(--text-hi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gstate { flex: none; font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; font-weight: 600; padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--text-2); }
 .gstate.ontrack, .gstate.done { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
 .gstate.behind { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
-.gedit { flex: none; font: inherit; font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; font-weight: 600; padding: 3px 11px; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--text-hi); cursor: pointer; }
-.gnum { display: flex; align-items: baseline; gap: 8px; padding-left: 16px; }
-.gnum b { font-size: 18px; font-weight: 700; letter-spacing: -.02em; color: var(--text-hi); font-variant-numeric: tabular-nums; }
+.gnum { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.gnum b { font-size: 20px; font-weight: 700; letter-spacing: -.02em; color: var(--text-hi); font-variant-numeric: tabular-nums; }
 .gnum span { font-size: var(--fs-meta); color: var(--text-3); font-variant-numeric: tabular-nums; }
-#goalList .pbar { margin: 0 0 0 16px; height: 5px; }
-.gfoot { display: flex; justify-content: space-between; gap: 10px; padding-left: 16px; font-size: var(--fs-meta); color: var(--text-2); font-variant-numeric: tabular-nums; }
+#goalList .pbar { margin: 0; height: 5px; }
+.gdw { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .38s var(--ease); }
+.gtile.open .gdw { grid-template-rows: 1fr; }
+.gdet { overflow: hidden; min-height: 0; }
+.gin { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-2); opacity: 0; transition: opacity .3s var(--ease); }
+.gtile.open .gin { opacity: 1; }
+.gfoot { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .gfoot span:last-child { color: var(--text-hi); font-weight: 600; text-align: right; }
-#goalList .gline { display: block; padding-left: 16px; font-size: var(--fs-meta); color: var(--text-3); line-height: 1.35; }
-@media (prefers-reduced-motion: reduce) { .gin { transition: none; } }
+#goalList .gline { display: block; font-size: var(--fs-meta); color: var(--text-3); line-height: 1.4; }
+.gedit { align-self: flex-start; min-height: 40px; padding: 0 18px; margin-top: 4px; display: inline-flex; align-items: center; }
+@media (prefers-reduced-motion: reduce) { .gdw, .gin { transition: none; } }
 .goaladd { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 10px; padding: 12px; border: 1.5px dashed var(--line); border-radius: 13px; background: none; color: var(--text-2); font: 600 14px var(--font); cursor: pointer; }
 .goaladd svg { width: 16px; height: 16px; }
+
+/* =========================================================================================================
+   Layout and spacing: one scale (4 / 8 / 12 / 16), the same page padding and card gap on every tab, text kept clear of the chip
+   ========================================================================================================= */
+#views { padding: var(--sp-2) var(--sp-4) 20px; }
+#v-money.on, #v-goals.on, #v-wealth.on, #v-settings.on { gap: var(--sp-3); }
+.bar.top { padding: 0 var(--sp-1) var(--sp-1); }
+.notch .k { padding-right: 36px; }
+
+/* Home: the blob, then the balance as the biggest text of the app, centred */
+#mBal { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--sp-2); min-height: 0; padding: 22px var(--sp-4) 20px; }
+#mBal #mBlob { width: 120px; height: 120px; margin: 0; }
+#mBal .mi { flex: none; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+#mBal .mi .k { padding-right: 0; }
+#mBal .mi b { font-size: 46px; line-height: 1.05; letter-spacing: -.03em; }
+#mBalance { align-self: center; }
+#mBal .medit { text-align: center; max-width: 300px; font-size: 46px; }
+#mBal .mi small { text-align: center; max-width: 100%; }
+@media (max-width: 360px) { #mBal #mBlob { width: 96px; height: 96px; } #mBal .mi b, #mBal .medit { font-size: 38px; } }
+@media (max-height: 700px) { #mBal #mBlob { width: 92px; height: 92px; } #mBal { padding: 16px var(--sp-4) 14px; } }
+
+/* the line: smaller */
+#mChart { padding: 12px var(--sp-4) 10px; }
+#mbChart { height: 56px !important; }
+.chartbox { margin-top: var(--sp-2); }
+
+/* net worth and yearly growth side by side */
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.duo > * { min-width: 0; }
+#mNw, #gwCard { padding: 14px var(--sp-4); min-height: 96px; }
+#mNw b { font-size: 21px; margin: 4px 0 2px; }
+#mNw small { padding-right: 20px; }
+#gwCard .gwrow { flex-direction: column; align-items: flex-start; gap: 2px; margin-top: 4px; padding-right: 0; }
+#gwAmount { font-size: 21px; }
+#gwPct { font-size: var(--fs-meta); }
+#mNw::after { right: 14px; bottom: 12px; }
+
+/* Wealth and the lists: the same breathing room */
+.alist li { padding: 12px 0; }
+
+/* Settings: a group is a label, then rows; text on the left, the control on the right, always clear of each other and of the edge */
+#v-settings .group { padding: var(--sp-4) var(--sp-4) var(--sp-2); }
+#v-settings .group .label { min-height: 24px; display: flex; align-items: center; margin: 0 0 var(--sp-1); padding-right: 44px; }
+.setrow { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-3) var(--sp-4); padding: var(--sp-3) 0; min-height: 56px; }
+.setrow > span { flex: 1 1 150px; min-width: 0; white-space: normal; overflow-wrap: anywhere; font-size: 14px; line-height: 1.3; }
+.setrow > span small, .setrow small { display: block; white-space: normal; overflow: visible; text-overflow: clip; margin-top: 4px; font-size: 12px; line-height: 1.35; color: var(--text-3); }
+.setrow > .pillbtn, #accBtn, #appBtn { flex: none !important; order: 0 !important; min-height: 40px; padding: 0 var(--sp-4); font-size: 14px; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; }
+.setrow > .av, .av { flex: none; width: 40px; height: 40px; font-size: 16px; }
+#v-settings .setrow:has(#accAv:not([hidden])) { flex-wrap: nowrap; }
+#v-settings .setrow:has(#accAv:not([hidden])) > span { flex: 1 1 0; }
+.setrow > .switch { flex: none; width: 48px; height: 28px; }
+.setrow > .switch::after { top: 3px; left: 3px; width: 20px; height: 20px; }
+.setrow > .switch.on::after { transform: translateX(20px); }
+.setrow:has(> .seg), .setrow:has(> .swatches) { flex-direction: column; align-items: stretch; gap: 10px; }
+.setrow > .seg { display: flex; width: 100%; gap: var(--sp-2); }
+.seg button { flex: 1; min-height: 44px; font-size: 14px; }
+.setrow > .swatches { width: 100%; display: grid; grid-template-columns: repeat(6, 1fr); justify-items: center; gap: 0; }
+.swatches button { width: 40px; height: 40px; }
+.accform { flex-wrap: wrap; align-items: stretch; gap: var(--sp-2); padding: 0 0 var(--sp-3); flex-direction: row; }
+.accform .field { flex: 1 1 180px; width: auto; min-height: 48px; }
+.accform .pillbtn { flex: 1 1 100px; min-height: 48px; font-size: 15px; }
+#bankBal.fine, .group .fine { display: block; padding: 0 0 var(--sp-3); font-size: 12px; line-height: 1.4; color: var(--text-3); }
+#bankMore { display: block; min-height: 40px; padding: 4px 0 var(--sp-3); text-align: left; }
+#v-settings .bar.foot { margin-top: var(--sp-1); padding: var(--sp-3) var(--sp-1) var(--sp-2); }
+.setrow:has(> .seg) > span, .setrow:has(> .swatches) > span { flex: none; }
