@@ -1,21 +1,23 @@
 // Island Money: the island's Money card on the web. Sign in with an emailed code (the same Supabase account the island uses), then
 // click the balance to change it. A change is stored as an adjustment on today, and the database rebuilds balance_history
-// (migration 0003), which is what the line below the balance and the island's Money tab show.
-import { createBlob } from './bloub/view.js';
-
+// (migration 0003), which is what the line and the island's Money tab show.
+//
+// Speed: the page is drawn as a skeleton before any script runs (body.loading), the last balance is kept on this device and shown at
+// once while the real one is fetched, and the blob is loaded after everything else so it never delays the numbers.
 const { url, anonKey } = window.MONEY_CONFIG;
 const sb = window.supabase.createClient(url, anonKey, { auth: { persistSession: true, autoRefreshToken: true } });
 const $ = (id) => document.getElementById(id);
 const RISE = 'cubic-bezier(.2, .9, .3, 1)';
+const CACHE_KEY = 'money.last';
 
 // first visit: the island's Lilac palette, light or dark like the device (the island's own settings live in the island)
 if (!localStorage.getItem('island.settings')) window.islandTheme.set({ theme: 'auto', palette: 'lilac' });
 
 const round2 = (n) => Math.round(n * 100) / 100;
 const eur = (n) => (n < 0 ? '−' : '') + '€' + Math.abs(Math.round(n)).toLocaleString('en-US');
-const eurExact = (n) => (n < 0 ? '−' : '') + '€' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const fail = (e) => (e && e.message) || String(e);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // "4820", "4,820.50", "4 820,5", "-120": a number with at most two decimals; anything else is refused
 function parseMoney(text) {
@@ -27,37 +29,47 @@ function parseMoney(text) {
   if (!/^\d{1,11}(\.\d{1,2})?$/.test(t)) return null;
   return (neg ? -1 : 1) * parseFloat(t);
 }
+const store = {
+  get() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch { return null; } },
+  set(v) { try { localStorage.setItem(CACHE_KEY, JSON.stringify(v)); } catch { /* private mode: no cache */ } },
+  clear() { try { localStorage.removeItem(CACHE_KEY); } catch { /* ignore */ } },
+};
 
-// ---- the blobs (engine from github.com/jeremy-prt/bloub), drawn in the theme's ink on the island's colour
-const BLOB = { color: 'creme', paper: '#000000', facing: 'right' };
-const mb = createBlob($('mBlob'), BLOB);
-function paintBlobs() {
+// ---- the blob (engine from github.com/jeremy-prt/bloub), drawn in the theme's ink on the island's colour. Loaded last.
+let mb = null;
+const blobCall = (f) => { if (mb) f(mb); };
+function mood(expression, back, ms) { blobCall((b) => b.setExpression(expression)); if (back) setTimeout(() => blobCall((b) => b.setExpression(back)), ms); }
+function paintBlob() {
   const cs = getComputedStyle(document.documentElement);
-  for (const b of [mb]) b.setColors(cs.getPropertyValue('--blob-ink').trim(), cs.getPropertyValue('--bg').trim());
+  blobCall((b) => b.setColors(cs.getPropertyValue('--blob-ink').trim(), cs.getPropertyValue('--bg').trim()));
 }
-paintBlobs();
-window.islandTheme.onChange(paintBlobs);
-mb.start();
-mb.setExpression('money');
-document.addEventListener('mousemove', (e) => { mb.look(e.clientX, e.clientY); });
-document.addEventListener('mouseleave', () => mb.look(null));
-function mood(blob, expression, back, ms) { blob.setExpression(expression); if (back) setTimeout(() => blob.setExpression(back), ms); }
+import('./bloub/view.js').then(({ createBlob }) => {
+  mb = createBlob($('mBlob'), { color: 'creme', paper: '#000000', facing: 'right' });
+  paintBlob(); mb.start(); mb.setExpression('money');
+  window.islandTheme.onChange(paintBlob);
+  document.addEventListener('mousemove', (e) => mb.look(e.clientX, e.clientY));
+  document.addEventListener('mouseleave', () => mb.look(null));
+  $('mBlob').addEventListener('click', () => mb.play('wink', 1.2));   // a tap on it winks
+  if (!reduced && tab === 'money') blobEntrance($('mBlob'));
+}).catch(() => { /* no blob: the numbers still work */ });
 
 // ---- the island's entrance: things rise in turn, the blob pops in, the number counts up, the line draws itself
-const rise = (els, delay = 0, gap = 55) => els.forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 560, delay: delay + i * gap, easing: RISE, fill: 'backwards' }));
-const blobEntrance = (host) => host.animate([{ opacity: 0, transform: 'translateY(22px) scale(.55)' }, { opacity: 1, transform: 'translateY(-4px) scale(1.07)', offset: .62 }, { opacity: 1, transform: 'none' }], { duration: 680, easing: 'cubic-bezier(.2, .9, .3, 1)' });
-function countUp(el, to, dur = 1000, delay = 0) {
+const rise = (els, delay = 0, gap = 55) => { if (!reduced) els.forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 560, delay: delay + i * gap, easing: RISE, fill: 'backwards' })); };
+const blobEntrance = (host) => host.animate([{ opacity: 0, transform: 'translateY(22px) scale(.55)' }, { opacity: 1, transform: 'translateY(-4px) scale(1.07)', offset: .62 }, { opacity: 1, transform: 'none' }], { duration: 680, easing: RISE });
+function countUp(el, to, dur = 1000, delay = 0, from = 0) {
   cancelAnimationFrame(el._raf);
-  el.textContent = eur(0);
+  if (reduced) { el.textContent = eur(to); return; }
+  el.textContent = eur(from);
   const t0 = performance.now() + delay;
   const step = (now) => {
     const p = Math.max(0, Math.min(1, (now - t0) / dur));
-    el.textContent = eur(to * (1 - (1 - p) ** 3));
+    el.textContent = eur(from + (to - from) * (1 - (1 - p) ** 3));
     if (p < 1) el._raf = requestAnimationFrame(step); else el.textContent = eur(to);
   };
   el._raf = requestAnimationFrame(step);
 }
 function drawIn() {
+  if (reduced) return;
   const bl = $('mbLine'), blen = bl.getTotalLength();
   bl.style.strokeDasharray = blen;
   bl.animate([{ strokeDashoffset: blen }, { strokeDashoffset: 0 }], { duration: 1300, delay: 320, easing: 'cubic-bezier(.35, .1, .2, 1)', fill: 'backwards' });
@@ -66,16 +78,17 @@ function drawIn() {
 }
 function enter(view) {
   if (view === 'money') {
-    rise([$('mBal')], 30);
-    blobEntrance($('mBlob'));
+    rise([$('mBal'), $('mChart')], 30, 80);
+    if (mb) blobEntrance($('mBlob'));
     countUp($('mBalance'), data.balance, 1000, 200); drawIn();
   } else rise([...document.querySelectorAll('#v-settings .group')], 30, 70);
 }
 
-// ---- the balance line: the same plain 30-day line as the island's Money tab
-const BW = 170, BH = 60, BP = 6;
+// ---- the balance line: the island's plain line, drawn at the real size of its card (one svg unit is one pixel)
+let BW = 300, BH = 130;
+const BP = 8;
 let data = { balance: 0, history: [0, 0], accounts: 0, thin: true };
-const bx = (i) => (i / (data.history.length - 1)) * (BW - 6);
+const bx = (i) => BP + (i / (data.history.length - 1)) * (BW - BP * 2);
 const by = (v) => { const h = data.history, lo = Math.min(...h), hi = Math.max(...h); return BP + ((hi - v) / (hi - lo || 1)) * (BH - BP * 2); };
 function smooth(pts) {
   let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
@@ -86,28 +99,37 @@ function mark(i, hover) {
   const h = data.history, x = bx(i), y = by(h[i]);
   for (const id of ['mbDot', 'mbHalo']) { $(id).setAttribute('cx', x); $(id).setAttribute('cy', y); }
   $('mbCross').setAttribute('x1', x); $('mbCross').setAttribute('x2', x);
+  $('mbCross').setAttribute('y1', 2); $('mbCross').setAttribute('y2', BH - 2);
   $('mbChart').classList.toggle('hov', hover);
   const note = $('mbNote'), d = h[h.length - 1] - h[0];
+  if (!user) { note.textContent = ''; return; }
   if (data.thin) { note.textContent = data.accounts ? 'No history yet' : ''; return; }
   note.innerHTML = hover ? `Day ${i + 1} · ${eur(h[i])}` : `<em class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '▲ +' : '▼ −'}${eur(Math.abs(d))}</em> in ${h.length} days`;
 }
 function drawChart() {
   const h = data.history, pts = h.map((v, i) => [bx(i), by(v)]), line = smooth(pts);
   $('mbLine').setAttribute('d', line);
-  $('mbArea').setAttribute('d', `${line} L${pts[pts.length - 1][0].toFixed(1)} ${BH} L0 ${BH} Z`);
+  $('mbArea').setAttribute('d', `${line} L${pts[pts.length - 1][0].toFixed(1)} ${BH} L${BP} ${BH} Z`);
   mark(h.length - 1, false);
 }
+function sizeChart() {
+  const r = $('mbChart').getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  BW = r.width; BH = r.height;
+  $('mbChart').setAttribute('viewBox', `0 0 ${BW.toFixed(1)} ${BH.toFixed(1)}`);
+  drawChart();
+}
+new ResizeObserver(sizeChart).observe($('mbChart'));
 $('mbChart').addEventListener('pointermove', (e) => {
-  const r = $('mbChart').getBoundingClientRect(), k = Math.min(r.width / BW, r.height / BH), left = r.right - BW * k;
-  const x = (e.clientX - left) / k;
-  mark(Math.max(0, Math.min(data.history.length - 1, Math.round((x / (BW - 6)) * (data.history.length - 1)))), true);
+  const r = $('mbChart').getBoundingClientRect(), x = e.clientX - r.left;
+  mark(Math.max(0, Math.min(data.history.length - 1, Math.round(((x - BP) / (BW - BP * 2)) * (data.history.length - 1)))), true);
 });
 $('mbChart').addEventListener('pointerleave', () => mark(data.history.length - 1, false));
-
+$('mbChart').addEventListener('pointerup', () => mark(data.history.length - 1, false));
 
 // ---- the tabs: the bottom bar, with the island's sliding indicator
 const TABS = ['money', 'settings'];
-let tab = '', user = null, editing = false;
+let tab = '', user = null, editing = false, pending = true;   // pending: the saved session has not been read yet
 function moveInd() {
   const ind = $('dockInd'), b = document.querySelector('#dock > button.on');
   if (b) { ind.style.left = b.offsetLeft + 'px'; ind.style.width = b.offsetWidth + 'px'; }
@@ -120,6 +142,7 @@ function showTab(t) {
   for (const b of document.querySelectorAll('#dock button')) b.classList.toggle('on', b.dataset.t === t);
   for (const v of document.querySelectorAll('.view')) v.classList.toggle('on', v.id === 'v-' + t);
   moveInd();
+  if (t === 'money') sizeChart();
   if (!first) { enter(t); if (t === 'money' && user) refresh(); }
 }
 $('dock').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) showTab(b.dataset.t); });
@@ -137,7 +160,7 @@ function renderLook() {
 }
 $('setPalette').innerHTML = Object.entries(window.islandTheme.palettes).map(([k, p]) => `<button data-v="${k}" type="button" title="${p.name}" aria-label="${p.name}" style="--a:${p.a[0]};--b:${p.b[0]}"></button>`).join('');
 $('setTheme').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) { window.islandTheme.set({ theme: b.dataset.v }); renderLook(); } });
-$('setPalette').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) { window.islandTheme.set({ palette: b.dataset.v }); renderLook(); mood(mb, 'heureux', 'money', 1200); } });
+$('setPalette').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) { window.islandTheme.set({ palette: b.dataset.v }); renderLook(); mood('heureux', 'money', 1200); } });
 window.islandTheme.onChange(renderLook);
 renderLook();
 
@@ -204,28 +227,34 @@ async function load(animate) {
     sb.from('balance_history').select('day,balance').order('day'),
   ]);
   const err = a.error || h.error;
-  if (err) { say(fail(err), true); return; }
+  if (err) { data.loaded = true; render(false); say(fail(err), true); return; }
   const history = h.data.map((x) => Number(x.balance));
-  data = { accounts: a.data.length, accountId: a.data[0] && a.data[0].id, balance: history.length ? history[history.length - 1] : 0, history: history.length > 1 ? history : [history[0] || 0, history[0] || 0] };
+  const before = data.balance, had = !!data.fromCache;   // had: the saved balance was already on screen
+  data = { accounts: a.data.length, accountId: a.data[0] && a.data[0].id, balance: history.length ? history[history.length - 1] : 0, history: history.length > 1 ? history : [history[0] || 0, history[0] || 0], loaded: true };
   data.thin = history.length < 2 || history.every((v) => v === history[0]);
-  render(animate);
+  store.set({ uid: user.id, email: user.email || '', accounts: data.accounts, balance: data.balance, history: data.history, thin: data.thin });
+  render(animate && !had);
+  if (had && before !== data.balance && tab === 'money') { countUp($('mBalance'), data.balance, 700, 0, before); drawIn(); }   // the cached number was out of date
 }
 // the app comes back to the front: fetch again, so a change made on another device shows (at most once every 3 s)
 let lastLoad = 0;
 function refresh() {
   if (!user || editing || Date.now() - lastLoad < 3000) return;
   lastLoad = Date.now();
-  load(false).then(() => { if (tab === 'money') countUp($('mBalance'), data.balance, 600, 0); });
+  const before = data.balance;
+  load(false).then(() => { if (tab === 'money' && data.balance !== before) countUp($('mBalance'), data.balance, 600, 0, before); });
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && tab === 'money') refresh(); });
 window.addEventListener('focus', () => { if (tab === 'money') refresh(); });
 
 function say(text, bad) { $('mIO').textContent = text; $('mIO').classList.toggle('err', !!bad); }
 function render(animate) {
-  document.body.classList.toggle('out', !user);
-  $('mTag').textContent = user ? 'Live' : 'Signed out'; $('mTag').classList.toggle('live', !!user);
+  const body = document.body;
+  body.classList.toggle('out', !user && !pending);
+  body.classList.toggle('loading', !data.loaded);   // the skeleton shows until real (or saved) numbers exist
+  $('mTag').textContent = pending ? '' : user ? 'Live' : 'Signed out'; $('mTag').classList.toggle('live', !!user);
   $('mBalance').title = user ? 'Click to change' : 'Sign in';
-  if (!user) { $('mBalance').textContent = '€-'; say('Tap here to sign in'); return; }
+  if (!user && !pending) { $('mBalance').textContent = '€-'; say('Tap here to sign in'); drawChart(); return; }
   if (!animate) $('mBalance').textContent = eur(data.balance);
   say(data.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
   drawChart();
@@ -233,19 +262,20 @@ function render(animate) {
 }
 // click the amount to change it: Enter saves, Escape cancels
 function startEdit() {
+  if (pending) return;
   if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; }
   if (editing) return;
   editing = true;
   const inp = $('mEdit');
   inp.value = data.accounts ? String(round2(data.balance)) : '';
   $('mBalance').hidden = true; inp.hidden = false; inp.focus(); inp.select();
-  mood(mb, 'curieux');
+  mood('curieux');
 }
-function endEdit() { editing = false; $('mEdit').hidden = true; $('mBalance').hidden = false; mb.setExpression('money'); }
+function endEdit() { editing = false; $('mEdit').hidden = true; $('mBalance').hidden = false; mood('money'); }
 async function saveEdit() {
   if (!editing) return;
   const target = parseMoney($('mEdit').value);
-  if (target === null) { $('mEdit').focus(); say('Type an amount like 4820.50', true); mood(mb, 'surpris', 'curieux', 1500); return; }
+  if (target === null) { $('mEdit').focus(); say('Type an amount like 4820.50', true); mood('surpris', 'curieux', 1500); return; }
   endEdit();
   const delta = round2(target - data.balance);
   if (data.accounts && delta === 0) { say('Click the amount to change it'); return; }
@@ -257,8 +287,8 @@ async function saveEdit() {
   } else {
     ({ error } = await sb.from('transactions').insert({ user_id: user.id, account_id: data.accountId, day: ymd(new Date()), amount: delta, category: 'Balance edit', note: '' }));
   }
-  if (error) { say(fail(error), true); mood(mb, 'surpris', 'money', 1500); }
-  else mood(mb, 'heureux', 'money', 1600);
+  if (error) { say(fail(error), true); mood('surpris', 'money', 1500); }
+  else mood('heureux', 'money', 1600);
   await load(false);
   countUp($('mBalance'), data.balance, 700, 0);
   drawIn();
@@ -275,17 +305,34 @@ $('mEdit').addEventListener('blur', () => { if (editing) saveEdit(); });
 // ---- who is signed in
 function onSession(session) {
   const next = session ? session.user : null;
-  const changed = (next && next.id) !== (user && user.id);
-  user = next;
+  const changed = (next && next.id) !== (user && user.id) || pending;
+  user = next; pending = false;
   $('who').textContent = user ? user.email || '' : '';
   renderAccount();
   if (!changed) return;
-  if (user) { showTab('money'); setTimeout(() => load(true), 0); }   // not inside the auth callback: it holds the auth lock
-  else { data = { balance: 0, history: [0, 0], accounts: 0, thin: true }; accStep = 'idle'; renderAccount(); render(false); }
+  if (user) {
+    showTab('money'); setTimeout(() => load(true), 0);   // not inside the auth callback: it holds the auth lock
+  } else {
+    store.clear();
+    data = { balance: 0, history: [0, 0], accounts: 0, thin: true, loaded: true };
+    accStep = 'idle'; renderAccount(); render(false);
+  }
 }
+
+// ---- start: draw what we know right away (the last balance on this device), then ask for the real one
+(() => {
+  const c = store.get();
+  if (c && c.uid) {
+    data = { accounts: c.accounts, balance: c.balance, history: c.history, thin: c.thin, fromCache: true, loaded: true };
+    $('who').textContent = c.email || '';
+    $('mBalance').textContent = eur(c.balance);
+    say(c.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
+    $('mTag').textContent = ''; document.body.classList.remove('loading');
+  }
+})();
 renderAccount();
 showTab('money');
-render(false);
+sizeChart();
 sb.auth.onAuthStateChange((_event, session) => onSession(session));
 sb.auth.getSession().then(({ data: d }) => onSession(d.session));
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { /* the app works without it */ });

@@ -2,22 +2,25 @@
    Phone: the whole screen, tabs at the bottom. Computer: the island panel, centred. */
 :root { --page: #000; }
 :root[data-theme="light"] { --page: #d3d8e6; }
-html, body { height: 100%; overflow: hidden; background: var(--page); user-select: text; -webkit-text-size-adjust: 100%; }
-body { padding: 24px 12px; display: flex; justify-content: center; align-items: flex-start; }
+html { height: 100%; background: var(--page); -webkit-text-size-adjust: 100%; }
+/* fixed to the visible screen: a phone's address bar can no longer push the tab bar out of view */
+body { position: fixed; inset: 0; height: auto; overflow: hidden; background: var(--page); user-select: text; padding: 24px 12px; display: flex; justify-content: center; align-items: flex-start;
+  overscroll-behavior: none; touch-action: manipulation; }
 button, a, #dock { -webkit-tap-highlight-color: transparent; }
 
-#pill { position: relative; top: auto; left: auto; transform: none; width: min(480px, 100%); height: min(720px, 100%) !important; contain: layout paint; }
+#pill { position: relative; top: auto; left: auto; transform: none; width: min(480px, 100%); height: min(760px, 100%) !important; contain: layout paint; }
 #content { position: relative; width: auto; height: 100%; padding: 0; display: flex; flex-direction: column; }
 .view { min-height: 0; }
 
 #appbar { flex: none; display: flex; align-items: baseline; gap: var(--sp-3); padding: 16px var(--sp-4) 6px; }
 #appbar b { font-size: var(--fs-title); color: var(--text-hi); letter-spacing: -.01em; }
 #who { margin-left: auto; font-size: var(--fs-meta); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-#views { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--sp-2) var(--sp-4) var(--sp-4); }
+#views { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: var(--sp-2) var(--sp-4) var(--sp-4); }
 
 /* the tab bar at the bottom: the island's sliding indicator, on its top edge */
-#dock { position: relative; flex: none; display: flex; border-top: 1px solid var(--line); padding: 4px var(--sp-2) calc(6px + env(safe-area-inset-bottom)); background: var(--bg); }
-#dock > button { flex: 1; background: none; border: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0 4px;
+/* (island.css styles every <nav> as its slim tab row: margin, border, 28px buttons; undone here, which is what cropped the bar) */
+#dock { position: relative; flex: none; display: flex; gap: 0; margin: 0; border: 0; border-top: 1px solid var(--line); padding: 4px var(--sp-2) calc(6px + env(safe-area-inset-bottom)); background: var(--bg); }
+#dock > button { flex: 1; height: auto; min-height: 52px; margin: 0; border: 0; background: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 6px 0 2px;
   color: var(--text-3); font-size: var(--fs-meta); transition: color .2s; }
 #dock > button:hover { color: var(--text-2); }
 #dock > button.on { color: var(--text-hi); }
@@ -27,34 +30,67 @@ button, a, #dock { -webkit-tap-highlight-color: transparent; }
 #dockInd { position: absolute; left: 0; top: -1px; width: 0; height: 2px; border-radius: 2px; pointer-events: none;
   background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: left .42s var(--spring), width .42s var(--spring), opacity .2s; }
 
-/* the amount turns into a field in place */
-#mBalance { cursor: text; border-radius: var(--r-1); }
+/* ---- Money: the balance card, then the line in a card of its own, both notched like the island's ---- */
+#v-money.on { display: flex; flex-direction: column; gap: var(--sp-2); }
+#mBal { height: auto !important; min-height: 136px; padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-3); gap: var(--sp-3); }
+#mBal #mBlob { width: 108px; height: 108px; }
+#mBal .mi { flex: 1; min-width: 0; }
+#mBal .mi b { font-size: 34px; }
+#mBal .mi small { white-space: normal; }
+#mBalance { cursor: text; border-radius: var(--r-1); align-self: flex-start; }
 #mBalance:hover { color: var(--accent); }
 #mBalance:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 2px; }
-.medit { width: 100%; max-width: 170px; background: transparent; border: 0; border-bottom: 1.5px solid var(--accent); color: var(--text-hi); outline: 0; padding: 0;
-  font: 700 28px/1.1 var(--font); letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.medit { width: 100%; max-width: 190px; background: transparent; border: 0; border-bottom: 1.5px solid var(--accent); color: var(--text-hi); outline: 0; padding: 0;
+  font: 700 34px/1.1 var(--font); letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 2px; border-radius: 0; }
 .medit[hidden] { display: none; }
-#mBal .mi { min-width: 0; }
-body.out #mBal .mg { visibility: hidden; }
-#mIO.err, #accText small.err { color: var(--danger); }
+#mChart { padding: var(--sp-3) var(--sp-4) var(--sp-3); }
+#mChart .ch { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-3); padding-right: 34px; min-height: 16px; }
+.chartbox { position: relative; margin-top: var(--sp-3); }
+#mbChart { display: block; width: 100%; height: 130px; overflow: visible; cursor: crosshair; touch-action: pan-y; }
+#mbNote { font-size: var(--fs-meta); color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+#mbNote em { font-style: normal; font-weight: 600; }
+#mbNote .up { color: var(--ok, var(--accent)); }
+#mbNote .down { color: var(--danger, var(--accent-2)); }
+body.out #mbChart { opacity: .25; }
+#mIO.err { color: var(--danger); }
+#mTag { font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--text-4); }
 #mTag.live { color: var(--ok); }
 
-/* settings: the island's groups, one under the other */
+/* ---- the skeleton: the page's shape is on screen before any script has run; shimmering blocks stand in for the numbers ---- */
+@keyframes shimmer { to { background-position: -200% 0; } }
+.chartsk, body.loading .sk, body.loading #mBlob:empty::before {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; }
+.chartsk { display: none; position: absolute; inset: 0; border-radius: var(--r-3); }
+body.loading .chartsk { display: block; }
+body.loading #mbChart { visibility: hidden; }
+body.loading .sk { color: transparent !important; border-radius: var(--r-2); user-select: none; pointer-events: none; }
+body.loading #mBlob:empty::before { content: ""; display: block; width: 88px; height: 88px; margin: 10px; border-radius: 50%; }
+body.loading #mbNote.sk { min-width: 90px; min-height: 12px; }
+@media (prefers-reduced-motion: reduce) { .chartsk, body.loading .sk, body.loading #mBlob:empty::before { animation: none; } }
+
+/* ---- settings: the island's groups, one under the other ---- */
 #v-settings.on { display: flex; flex-direction: column; gap: var(--sp-2); }
 #v-settings .bar.foot { margin-top: var(--sp-2); }
+#accText small.err { color: var(--danger); }
 .accform { display: flex; gap: var(--sp-2); align-items: center; padding: 0 0 var(--sp-3); }
 .accform[hidden] { display: none; }
-.accform .field { flex: 1; min-width: 0; margin: 0; font-size: 16px; }   /* 16px: phones zoom into smaller fields */
+.accform .field { flex: 1; min-width: 0; margin: 0; font-size: 16px; padding: 9px 11px; }   /* 16px: phones zoom into smaller fields */
 .accform .field.code { font: 600 var(--fs-code) var(--mono); letter-spacing: .32em; text-align: center; }
-.swatches button { width: 26px; height: 26px; }
-.seg button { padding: 4px var(--sp-3); }
+.setrow { min-height: 46px; }
+.pillbtn { padding: 8px var(--sp-4); }
+.swatches button { width: 28px; height: 28px; }
+.seg button { padding: 6px var(--sp-3); }
 
 /* a phone: the app fills the screen, no panel */
 @media (max-width: 560px) {
   body { padding: 0; }
   #pill { width: 100%; height: 100% !important; border-radius: 0; box-shadow: none; border: 0; }
   #appbar { padding-top: calc(14px + env(safe-area-inset-top)); }
-  #mBal .mi b, .medit { font-size: 26px; }
-  #mBal { padding-right: var(--sp-3); }
+  #views { padding-left: var(--sp-3); padding-right: var(--sp-3); }
+  #mBal #mBlob { width: 100px; height: 100px; }
+  #mBal .mi b, .medit { font-size: 32px; }
+  #mbChart { height: 150px; }
 }
-@media (display-mode: standalone) { body { padding: 0; } #pill { width: min(480px, 100%); } }
+@media (max-width: 360px) { #mBal #mBlob { width: 84px; height: 84px; } #mBal .mi b, .medit { font-size: 28px; } }
+@media (max-height: 640px) { #mbChart { height: 100px; } #mBal { min-height: 116px; } }
+@media (display-mode: standalone) { body { padding-top: 0; padding-bottom: 0; } }

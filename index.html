@@ -9,14 +9,29 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Island Money">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cfstamyhaocixxubrdqr.supabase.co" crossorigin>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="theme.js"></script>
-<link rel="stylesheet" href="island.css">
-<link rel="stylesheet" href="web.css">
+<link rel="stylesheet" href="island.css?v=4">
+<link rel="stylesheet" href="web.css?v=5">
+<link rel="modulepreload" href="bloub/view.js">
+<link rel="modulepreload" href="bloub/decor.js">
+<link rel="modulepreload" href="bloub/engine.js">
+<link rel="modulepreload" href="bloub/expressions.js">
+<link rel="modulepreload" href="bloub/eyefit.js">
+<link rel="modulepreload" href="bloub/face.js">
+<link rel="modulepreload" href="bloub/gaze.js">
+<link rel="modulepreload" href="bloub/math.js">
+<link rel="modulepreload" href="bloub/profiles.js">
+<link rel="modulepreload" href="bloub/repere.js">
+<link rel="modulepreload" href="bloub/shape.js">
+<link rel="modulepreload" href="bloub/skins.js">
+<link rel="modulepreload" href="bloub/states.js">
 </head>
-<body>
+<body class="loading">
 <!-- The island's own look, copied from ../ui: its tokens (island.css, theme.js), icons, blob (bloub/) and notched cards (notch.js).
      On a phone this is the whole screen, with the tabs at the bottom like an app; on a computer it is the island panel in the middle of the page. -->
 <div id="pill" class="open">
@@ -26,19 +41,22 @@
     <main id="views">
       <!-- the balance: the island's Money card; click the amount to change it -->
       <section class="view on" id="v-money">
-        <div class="bar top"><span class="label">Balance</span><span id="mTag">Signed out</span></div>
+        <div class="bar top"><span class="label">Balance</span><span id="mTag"></span></div>
         <div id="mBal" class="notch">
           <i data-ic="wallet"></i>
           <div id="mBlob"></div>
           <div class="mi">
             <span class="k">Balance</span>
-            <b id="mBalance" tabindex="0" role="button" title="Click to change">-</b>
+            <b id="mBalance" class="sk" tabindex="0" role="button" title="Click to change">€0,000</b>
             <input id="mEdit" class="medit" type="text" inputmode="decimal" maxlength="16" aria-label="Balance" hidden>
-            <small id="mIO">Click the amount to change it</small>
+            <small id="mIO" class="sk">Loading your balance</small>
           </div>
-          <div class="mg">
-            <span id="mbNote"></span>
-            <svg id="mbChart" viewBox="0 0 170 60" preserveAspectRatio="xMaxYMid meet">
+        </div>
+        <div id="mChart" class="notch">
+          <i data-ic="trend"></i>
+          <div class="ch"><span class="k">Last 30 days</span><span id="mbNote" class="sk"></span></div>
+          <div class="chartbox">
+            <svg id="mbChart" role="img" aria-label="Balance over the last 30 days">
               <defs>
                 <linearGradient id="mbgLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--accent-2)"/></linearGradient>
                 <linearGradient id="mbgArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--accent);stop-opacity:.28"/><stop offset="1" style="stop-color:var(--accent);stop-opacity:0"/></linearGradient>
@@ -49,6 +67,7 @@
               <circle id="mbHalo" r="8"/>
               <circle id="mbDot" r="3.8"/>
             </svg>
+            <div class="chartsk"></div>
           </div>
         </div>
       </section>
@@ -83,10 +102,10 @@
     </nav>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="config.js"></script>
-<script src="icons.js"></script>
-<script src="notch.js"></script>
-<script type="module" src="app.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script defer src="config.js"></script>
+<script defer src="icons.js"></script>
+<script defer src="notch.js?v=4"></script>
+<script defer src="app.js?v=4"></script>
 </body>
 </html>
