@@ -234,6 +234,7 @@ $('accForm').addEventListener('submit', async (e) => {
 
 // ---- the balance: the total is the last day of balance_history, which the database keeps up to date
 let link = null;   // the connected bank (a bank_links row), or null
+let pendingAdj = 0;   // the typed-in difference between the bank's balance and "after pending operations" (the bank does not list those)
 let lastBal = [];   // what the bank answered at the last sync: which balances it gave and which one is shown
 let shared = [];   // the accounts the bank shared (bank_accounts rows that came from the link)
 async function load(animate) {
@@ -253,7 +254,9 @@ async function load(animate) {
   renderBank();
   const cash = a.data.filter((x) => !x.kind || x.kind === 'cash');
   bankAssets = a.data.filter((x) => x.kind && x.kind !== 'cash').map((x) => ({ id: 'bank:' + x.id, kind: x.kind, name: x.name, invested: 0, value: Math.abs(Number(x.balance) || 0), since: null, fromBank: true }));
+  const bankCash = cash.filter((x) => x.bank_link_id).reduce((s, x) => s + (Number(x.balance) || 0), 0);
   data = { accounts: cash.length, accountId: cash[0] && cash[0].id, balance: history.length ? history[history.length - 1] : 0, history: history.length > 1 ? history : [history[0] || 0, history[0] || 0], loaded: true };
+  pendingAdj = link && cash.some((x) => x.bank_link_id && x.balance != null) ? round2(data.balance - bankCash) : 0;
   data.thin = history.length < 2 || history.every((v) => v === history[0]);
   store.set({ uid: user.id, email: user.email || '', accounts: data.accounts, balance: data.balance, history: data.history, thin: data.thin });
   loadAssets();   // (not awaited: the balance is already on screen)
@@ -281,7 +284,7 @@ function render(animate) {
   $('mBalance').title = user ? 'Click to change' : 'Sign in';
   if (!user && !pending) { $('mBalance').textContent = '€-'; say('Tap here to sign in'); drawChart(); return; }
   if (!animate) $('mBalance').textContent = eur(data.balance);
-  say(link ? '' : data.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
+  say(link ? (pendingAdj ? `Includes ${signed(pendingAdj)} not yet in your bank's data` : '') : data.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
   drawChart();
   if (animate && tab === 'money') enter('money');
 }
@@ -290,7 +293,6 @@ function startEdit() {
   if (pending) return;
   if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; }
   if (editing) return;
-  if (link) { say('Your balance comes from your bank'); return; }
   editing = true;
   const inp = $('mEdit');
   inp.value = data.accounts ? String(round2(data.balance)) : '';
@@ -303,6 +305,12 @@ async function saveEdit() {
   const target = parseMoney($('mEdit').value);
   if (target === null) { $('mEdit').focus(); say('Type an amount like 4820.50', true); mood('surpris', 'curieux', 1500); return; }
   endEdit();
+  if (link) {   // the bank does not list the pending operations: what you type is kept as an adjustment on top of the bank's balance
+    try { await bankCall('/adjust', 'POST', { amount: target }); mood('heureux', 'money', 1600); }
+    catch (e) { say(fail(e), true); mood('surpris', 'money', 1500); }
+    const before = data.balance; await load(false); countUp($('mBalance'), data.balance, 700, 0, before);
+    return;
+  }
   const delta = round2(target - data.balance);
   if (data.accounts && delta === 0) { say('Click the amount to change it'); return; }
   $('mBalance').textContent = eur(target);   // right away; the real number comes back with the reload below
@@ -368,7 +376,7 @@ function renderBank() {
   if (cashBal) {
     const others = cashBal.balances.filter((b) => b.type !== cashBal.used), p = cashBal.pending || { count: 0, sum: 0 };
     $('bankBal').textContent = `Your balance (${eur(cashBal.amount)}) is the ${BAL[cashBal.used] || cashBal.used} one. ` +
-      (p.count ? `It counts ${p.count} pending operation${p.count > 1 ? 's' : ''} (${signed(p.sum)}). ` : 'Your bank lists no pending operations, so purchases still on their way are not in it. ') +
+      (p.count ? `It counts ${p.count} pending operation${p.count > 1 ? 's' : ''} (${signed(p.sum)}). ` : `Your bank lists no pending operations${cashBal.statuses && Object.keys(cashBal.statuses).length ? ' (it sent: ' + Object.entries(cashBal.statuses).map(([k, v]) => v + ' ' + k.toLowerCase()).join(', ') + ')' : ''}, so purchases still on their way are not in it. Tap your balance and type what your bank shows after them: it is kept until your bank's balance moves. `) +
       (others.length ? 'Your bank also gives: ' + others.map((b) => `${BAL[b.type] || b.type} ${eur(b.amount)}`).join(', ') + '.' : '');
   }
   // which accounts the bank shared: if a livret is missing here, the bank did not share it (tick it at the bank and share again)
