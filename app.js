@@ -365,15 +365,11 @@ content.addEventListener('touchmove', (e) => {
   ptrSet(pull.p, false);
 }, { passive: false });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Letting go reloads the whole page, like a browser refresh: new code from the site arrives too, and the saved balance is shown at once.
 async function reloadNow() {
-  const before = data.balance;
-  mood('curieux');
-  const wait = sleep(700);   // the spinner shows long enough to be seen
-  if (user) { lastLoad = Date.now(); await load(false); }
-  await wait;
-  ptr.classList.remove('spin'); ptrSet(0, true);
-  if (user && tab === 'money') { countUp($('mBalance'), data.balance, 800, 0, before); drawIn(); mood('heureux', 'money', 1400); if (mb && !reduced) blobEntrance($('mBlob')); }
-  else mood('money');
+  if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration().then((r) => r && r.update()).catch(() => {});
+  await sleep(450);   // the spinner is seen for a moment first
+  location.reload();
 }
 function endPull() {
   const p = pull; pull = null;
