@@ -89,7 +89,7 @@ function enter(view, withNotch = false) {
     rise([$('mBal'), $('mChart')], 30, 80);
     if (mb) blobEntrance($('mBlob'));
     countUp($('mBalance'), data.balance, 1000, 200); drawIn();
-  } else if (view === 'pay') rise([$('goalsCard')], 30);
+  } else if (view === 'goals') rise([...$('goalList').children], 30);
   else if (view === 'wealth') rise([$('nwCard'), $('invCard'), $('projCard')], 30, 80);
   else rise([...document.querySelectorAll('#v-settings .group')], 30, 70);
 }

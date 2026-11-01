@@ -307,18 +307,16 @@ body.loading #nwAmount, body.loading #mNwAmount, body.loading #nwNote, body.load
 
 /* ---- Goals ---- */
 #v-goals.on { display: flex; flex-direction: column; gap: var(--sp-2); }
-#goalsCard { padding: var(--sp-4) var(--sp-4) 52px; --chip: var(--c-green); }
-#goalsCard .k { display: block; }
 .pbar { height: 8px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; margin-top: var(--sp-2); }
 .pbar > i { display: block; height: 100%; width: 0; border-radius: var(--r-pill); background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .6s var(--ease); }
 .pbar.warn > i { background: var(--warn); }
 
 /* each goal is a tile: its name and state, the amount against its target, a bar, then what is left and when */
 .gsum { display: block; margin: 2px 0 var(--sp-3); font-size: var(--fs-meta); color: var(--text-3); }
-#goalList { display: flex; flex-direction: column; }
-#goalList li.gtile { display: block; border: 0; padding: 0; background: none; cursor: pointer; min-height: 0; perspective: 900px; }
-#goalList li.gtile + li.gtile { border-top: 1px solid var(--line, var(--surface-2)); }
-#goalList li.empty { background: none; padding: 6px 0; display: block; }
+#goalsCard { padding: 0 var(--sp-1); }
+#goalList { display: flex; flex-direction: column; gap: 10px; list-style: none; margin: 0; padding: 0; }
+#goalList li.gtile { display: block; border: 0; padding: 0 14px; background: var(--card); border-radius: 13px; cursor: pointer; perspective: 900px; }
+#goalList li.empty { background: none; padding: 6px 0; display: block; color: var(--text-3); }
 /* a goal is a flat row; a click turns it over vertically to show the details, another click turns it back */
 .gin { display: grid; transform-style: preserve-3d; transition: transform .55s var(--ease); }
 .gtile.flip .gin { transform: rotateX(180deg); }
@@ -339,3 +337,5 @@ body.loading #nwAmount, body.loading #mNwAmount, body.loading #nwNote, body.load
 .gfoot span:last-child { color: var(--text-hi); font-weight: 600; text-align: right; }
 #goalList .gline { display: block; padding-left: 16px; font-size: var(--fs-meta); color: var(--text-3); line-height: 1.35; }
 @media (prefers-reduced-motion: reduce) { .gin { transition: none; } }
+.goaladd { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 10px; padding: 12px; border: 1.5px dashed var(--line); border-radius: 13px; background: none; color: var(--text-2); font: 600 14px var(--font); cursor: pointer; }
+.goaladd svg { width: 16px; height: 16px; }

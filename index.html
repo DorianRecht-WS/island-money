@@ -24,7 +24,7 @@
 </script>
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=29">
+<link rel="stylesheet" href="web.css?v=30">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -96,12 +96,10 @@
       <!-- goals: what you are saving for, and when you will get there -->
       <section class="view" id="v-goals">
         <div class="bar top"><span class="label">Goals</span><span id="gTag"></span></div>
-        <div id="goalsCard" class="notch" data-bl="1">
-          <i data-ic="calendar"></i>
-          <span class="k">My goals</span>
+        <div id="goalsCard">
           <span class="gsum" id="gSum"></span>
-          <ul id="goalList" class="alist"></ul>
-          <button class="mplus" id="goalAdd" type="button" aria-label="Add a goal"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
+          <ul id="goalList"></ul>
+          <button class="goaladd" id="goalAdd" type="button"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>Add a goal</button>
         </div>
       </section>
 
@@ -257,6 +255,6 @@
 <script defer src="wealth.js?v=3"></script>
 <script defer src="lock.js?v=4"></script>
 <script defer src="keypad.js?v=4"></script>
-<script defer src="app.js?v=42"></script>
+<script defer src="app.js?v=43"></script>
 </body>
 </html>
