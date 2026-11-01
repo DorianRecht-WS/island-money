@@ -661,7 +661,8 @@ $('lockSw').addEventListener('click', async () => {
 const GOAL_NAMES = ['Holiday', 'Emergency fund', 'New phone', 'Car', 'Home deposit', 'Wedding', 'Education', 'Gift', 'Other'];
 const GOAL_HUES = ['var(--c-sky)', 'var(--c-pink)', 'var(--c-green)', 'var(--c-orange)', 'var(--c-violet)', 'var(--c-yellow)', 'var(--c-blue)', 'var(--c-red)', 'var(--c-lime)'];
 const OVER = 'over:';   // an "is over" goal keeps what it watches in its source, as over:balance, over:networth, over:savings, over:investments or over:<item id>
-let goals = [], goalsReady = true, goalDraft = null;   // goalDraft: the goal being added or edited
+let goals = [], goalsReady = true, goalDraft = null; const goalFlipped = new Set();   // ids of the goals turned over to show their details
+   // goalDraft: the goal being added or edited
 const monthYear = (d) => d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 const isOver = (g) => String(g.source || '').startsWith(OVER);
 
@@ -715,13 +716,20 @@ function renderGoals() {
   $('gSum').textContent = goals.length ? `${goals.length} goal${goals.length > 1 ? 's' : ''} · ${reached} reached` : '';
   $('goalList').innerHTML = goals.map((g, i) => {
     const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.behind ? 'behind' : v.state === 'On track' ? 'ontrack' : '';
-    return `<li class="gtile" data-id="${esc(g.id)}" tabindex="0">
-      <div class="gh"><i style="background:${GOAL_HUES[i % GOAL_HUES.length]}"></i><b>${esc(v.title)}</b><span class="gstate ${tone}">${esc(v.state)}</span></div>
-      <div class="gkind">${esc(v.kind)}</div>
-      <div class="gnum"><b>${eur(v.now)}</b><span>of ${eur(v.target)}</span></div>
-      <div class="pbar ${v.done ? '' : v.behind ? 'warn' : ''}"><i style="width:${pct}%"></i></div>
-      <div class="gfoot"><span>${esc(v.left)}</span><span>${esc(v.when)}</span></div>
-      ${v.hint ? `<small class="gline">${esc(v.hint)}</small>` : ''}
+    const bar = `<div class="pbar ${v.done ? '' : v.behind ? 'warn' : ''}"><i style="width:${pct}%"></i></div>`;
+    return `<li class="gtile${goalFlipped.has(g.id) ? ' flip' : ''}" data-id="${esc(g.id)}" tabindex="0" role="button" aria-pressed="${goalFlipped.has(g.id)}">
+      <div class="gin">
+        <div class="gface gfront">
+          <div class="gh"><i style="background:${GOAL_HUES[i % GOAL_HUES.length]}"></i><b>${esc(v.title)}</b><span class="gstate ${tone}">${esc(v.state)}</span></div>
+          <div class="gnum"><b>${eur(v.now)}</b><span>of ${eur(v.target)}</span></div>
+          ${bar}
+        </div>
+        <div class="gface gback">
+          <div class="gh"><i style="background:${GOAL_HUES[i % GOAL_HUES.length]}"></i><b>${esc(v.kind)}</b><button type="button" class="gedit" data-edit="1">Edit</button></div>
+          <div class="gfoot"><span>${esc(v.left)}</span><span>${esc(v.when)}</span></div>
+          ${v.hint ? `<small class="gline">${esc(v.hint)}</small>` : ''}
+        </div>
+      </div>
     </li>`;
   }).join('') || `<li class="empty">${user ? (goalsReady ? 'Tap the + to add something you are saving for.' : 'Needs the database update.') : 'Sign in to add your goals.'}</li>`;
 }
@@ -766,7 +774,13 @@ function closeGoalSheet() {
   $('gsheetBg').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260 });
 }
 $('goalAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } openGoalSheet(null); });
-$('goalList').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); const g = li && goals.find((x) => x.id === li.dataset.id); if (g) openGoalSheet(g); });
+$('goalList').addEventListener('click', (e) => {
+  const li = e.target.closest('li[data-id]'); const g = li && goals.find((x) => x.id === li.dataset.id); if (!g) return;
+  if (e.target.closest('[data-edit]')) { openGoalSheet(g); return; }
+  const on = li.classList.toggle('flip'); li.setAttribute('aria-pressed', on);
+  on ? goalFlipped.add(g.id) : goalFlipped.delete(g.id);
+});
+$('goalList').addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('li.gtile')) { e.preventDefault(); e.target.click(); } });
 $('gsheetBg').addEventListener('click', closeGoalSheet);
 $('gX').addEventListener('click', closeGoalSheet);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGoalSheet(); });
