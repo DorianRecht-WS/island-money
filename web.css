@@ -46,13 +46,14 @@ button, a, #dock { -webkit-tap-highlight-color: transparent; }
 #mChart { padding: var(--sp-3) var(--sp-4) var(--sp-3); }
 #mChart .ch { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-3); padding-right: 34px; min-height: 16px; }
 .chartbox { position: relative; margin-top: var(--sp-3); }
-#mbChart { display: block; width: 100%; height: 130px; overflow: visible; cursor: crosshair; touch-action: pan-y; }
+#mbChart { display: block; width: 100%; height: 84px; overflow: visible; cursor: crosshair; touch-action: pan-y; }
 #mbNote { font-size: var(--fs-meta); color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 #mbNote em { font-style: normal; font-weight: 600; }
 #mbNote .up { color: var(--ok, var(--accent)); }
 #mbNote .down { color: var(--danger, var(--accent-2)); }
 body.out #mbChart { opacity: .25; }
 #mIO.err { color: var(--danger); }
+#mIO { display: block; min-height: 1.3em; }
 #mTag { font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--text-4); }
 #mTag.live { color: var(--ok); }
 
@@ -89,10 +90,10 @@ body.loading #mbNote.sk { min-width: 90px; min-height: 12px; }
   #views { padding-left: var(--sp-3); padding-right: var(--sp-3); }
   #mBal #mBlob { width: 100px; height: 100px; }
   #mBal .mi b, .medit { font-size: 32px; }
-  #mbChart { height: 150px; }
+  #mbChart { height: 96px; }
 }
 @media (max-width: 360px) { #mBal #mBlob { width: 84px; height: 84px; } #mBal .mi b, .medit { font-size: 28px; } }
-@media (max-height: 640px) { #mbChart { height: 100px; } #mBal { min-height: 116px; } }
+@media (max-height: 640px) { #mbChart { height: 70px; } #mBal { min-height: 116px; } }
 @media (display-mode: standalone) { body { padding-top: 0; padding-bottom: 0; } }
 
 /* ---- pull down to reload: a round accent chip that follows the finger, then spins while the balance loads ---- */
@@ -211,9 +212,11 @@ body.out #nwBar, body.out #nwLegend { opacity: .3; }
 
 /* ---- the lock cover: the app itself, blurred, with a lock chip on top ---- */
 #lock { position: fixed; inset: 0; z-index: 200; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px;
-  background: color-mix(in srgb, var(--bg) 35%, transparent); touch-action: manipulation; }
+  background: var(--bg); touch-action: manipulation; }
 html.locked #lock { display: flex; }
-html.locked #pill { filter: blur(22px); transform: scale(1.03); pointer-events: none; }
+html.locked #pill { visibility: hidden; pointer-events: none; }
+#lockBlob { width: 170px; height: 170px; margin-bottom: 8px; }
+#lockBlob:empty::before { content: ""; display: block; width: 120px; height: 120px; margin: 25px; border-radius: 50%; background: var(--text-hi); opacity: .85; animation: lockpulse 2.2s ease-in-out infinite; }
 html.locked #sheet, html.locked #gsheet, html.locked #kp { visibility: hidden; }
 .lockchip { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent);
   box-shadow: 0 12px 34px rgba(0, 0, 0, .35); animation: lockpulse 2.2s ease-in-out infinite; }

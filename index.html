@@ -24,7 +24,7 @@
 </script>
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=31">
+<link rel="stylesheet" href="web.css?v=32">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -241,9 +241,9 @@
   </form>
 </div>
 
-<!-- the lock cover: the app stays visible behind it, blurred; the chip shows that it is waiting for you -->
+<!-- the lock cover: a plain screen with the blob in the middle, waiting for you (the app behind it is not drawn at all) -->
 <div id="lock" role="dialog" aria-label="Island Money is locked">
-  <div class="lockchip"><i data-ic="lock"></i></div>
+  <div id="lockBlob"></div>
   <small id="lockMsg">Unlocking...</small>
   <button class="shlink" id="lockOut" type="button">Sign out instead</button>
 </div>
@@ -255,6 +255,6 @@
 <script defer src="wealth.js?v=3"></script>
 <script defer src="lock.js?v=4"></script>
 <script defer src="keypad.js?v=4"></script>
-<script defer src="app.js?v=46"></script>
+<script defer src="app.js?v=47"></script>
 </body>
 </html>

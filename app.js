@@ -36,7 +36,9 @@ const store = {
 };
 
 // ---- the blob (engine from github.com/jeremy-prt/bloub), drawn in the theme's ink on the island's colour. Loaded last.
-let mb = null;
+let mb = null, lb = null;   // lb: the blob of the lock screen
+const lockBlobRuns = () => { if (lb) { if (document.documentElement.classList.contains('locked') && !document.hidden) lb.start(); else lb.stop(); } };
+const lbPaint = () => { if (!lb) return; const cs = getComputedStyle(document.documentElement); lb.setColors(cs.getPropertyValue('--blob-ink').trim(), cs.getPropertyValue('--bg').trim()); };
 const blobCall = (f) => { if (mb) f(mb); };
 function mood(expression, back, ms) { blobCall((b) => b.setExpression(expression)); if (back) setTimeout(() => blobCall((b) => b.setExpression(back)), ms); }
 function paintBlob() {
@@ -46,8 +48,10 @@ function paintBlob() {
 const loadBlob = (tries = 3) => import('./bloub/view.js').then(({ createBlob }) => {
   mb = createBlob($('mBlob'), { color: 'creme', paper: '#000000', facing: 'right' });
   paintBlob(); mb.setExpression('money'); mb.look(null); blobRuns();
-  window.islandTheme.onChange(paintBlob);
-  document.addEventListener('mousemove', (e) => mb.look(e.clientX, e.clientY));
+  lb = createBlob($('lockBlob'), { color: 'creme', paper: '#000000', facing: 'right' });   // the big one in the middle of the lock screen
+  lbPaint(); lb.setExpression('money'); lb.look(null); lockBlobRuns();
+  window.islandTheme.onChange(() => { paintBlob(); lbPaint(); });
+  document.addEventListener('mousemove', (e) => { mb.look(e.clientX, e.clientY); if (lb) lb.look(e.clientX, e.clientY); });
   document.addEventListener('mouseleave', () => mb.look(null));
   $('mBlob').addEventListener('click', () => mb.play('wink', 1.2));   // a tap on it winks
   if (!reduced && tab === 'money') blobEntrance($('mBlob'));
@@ -56,7 +60,7 @@ loadBlob();
 
 // the blob draws 30 times a second: only while the Money tab is on screen
 const blobRuns = () => { if (mb) { if (tab === 'money' && !document.hidden) mb.start(); else mb.stop(); } };
-document.addEventListener('visibilitychange', blobRuns);
+document.addEventListener('visibilitychange', () => { blobRuns(); lockBlobRuns(); });
 
 // ---- the island's entrance: things rise in turn, the blob pops in, the number counts up, the line draws itself
 const rise = (els, delay = 0, gap = 55) => { if (!reduced) els.filter(Boolean).forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 560, delay: delay + i * gap, easing: RISE, fill: 'backwards' })); };
@@ -247,11 +251,11 @@ async function load(animate) {
     sb.from('bank_links').select('id,bank_name,valid_until,synced_at,last_error').order('created_at', { ascending: false }).limit(1),
   ]);
   const err = a.error || h.error;
-  if (err) { data.loaded = true; render(false); say(fail(err), true); return; }
+  if (err) { data.loaded = true; data.fromCache = false; assetsLoaded = true; render(false); say(fail(err), true); return; }
   link = (l.data && l.data[0]) || null;   // (no table yet, before the bank migration: no bank)
   renderBank();
   const history = h.data.map((x) => Number(x.balance));
-  const before = data.balance, had = !!data.fromCache;   // had: the saved balance was already on screen
+  const before = data.balance, had = false;   // (the saved balance stays hidden behind the skeleton, so the numbers always count up from zero)
   // current accounts make up the balance; livrets, investment accounts and loans from the bank are listed on the Wealth tab
   shared = a.data.filter((x) => x.bank_link_id);
   renderBank();
@@ -279,17 +283,26 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && ta
 window.addEventListener('focus', () => { if (tab === 'money') refresh(); });
 
 function say(text, bad) { $('mIO').textContent = text; $('mIO').classList.toggle('err', !!bad); }
+// the skeleton shows until everything on the Money tab is real (the fresh balance and the assets), so nothing pops in or grows afterwards
+let introWanted = false;
+const isReady = () => (!user && !pending) || (data.loaded && !data.fromCache && assetsLoaded);
+function syncLoading() {
+  const ready = isReady();
+  document.body.classList.toggle('loading', !ready);
+  if (ready && introWanted) { introWanted = false; if (tab === 'money') enter('money'); }
+}
 function render(animate) {
   const body = document.body;
   body.classList.toggle('out', !user && !pending);
-  body.classList.toggle('loading', !data.loaded);   // the skeleton shows until real (or saved) numbers exist
+  syncLoading();
   $('mTag').textContent = pending ? '' : user ? (link ? 'Live · bank' : 'Live') : 'Signed out'; $('mTag').classList.toggle('live', !!user);
   $('mBalance').title = user ? 'Click to change' : 'Sign in';
   if (!user && !pending) { $('mBalance').textContent = '€-'; say('Tap here to sign in'); drawChart(); return; }
   if (!animate) $('mBalance').textContent = eur(data.balance);
   say(link ? (pendingAdj ? `Includes ${signed(pendingAdj)} not yet in your bank's data` : '') : data.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
   drawChart();
-  if (animate && tab === 'money') enter('money');
+  if (animate) introWanted = true;
+  syncLoading();
 }
 // click the amount to change it: Enter saves, Escape cancels
 function startEdit() {
@@ -571,7 +584,7 @@ async function loadAssets() {
   const r = await sb.from('assets').select('*').order('created_at');   // (all columns: works before and after the rate column)
   assetsLoaded = true;
   assets = (r.data || []).map((a) => ({ ...a, invested: Number(a.invested), value: Number(a.value), rate: Number(a.rate) || 0, updated: a.updated_at || a.created_at }));   // (no table yet, before its migration: none)
-  renderWealth();
+  renderWealth(); syncLoading();
 }
 
 // ---- the rates: what savings pay (set by the State) and how a few markets did, from the public `rates` function; shown as buttons in the add form
@@ -617,14 +630,14 @@ async function tryUnlock() {
   if (unlockCtl) unlockCtl.abort();
   const ctl = unlockCtl = new AbortController();
   lockSay('Unlocking...');
-  try { await AppLock.verify(ctl.signal); if (ctl !== unlockCtl) return; unlockedAt = Date.now(); hiddenAt = 0; root.classList.remove('locked'); blobRuns(); sizeChart(); }
+  try { await AppLock.verify(ctl.signal); if (ctl !== unlockCtl) return; unlockedAt = Date.now(); hiddenAt = 0; root.classList.remove('locked'); lockBlobRuns(); blobRuns(); sizeChart(); }
   catch (e) { if (ctl === unlockCtl) lockSay(e && e.name === 'NotAllowedError' ? 'Tap anywhere to unlock' : 'Could not unlock, tap anywhere to try again'); }
 }
 function lockNow() {
   if (!AppLock.enabled() || root.classList.contains('locked')) return;
   closeAssetForm(); if (editing) endEdit(); if (window.Keypad) Keypad.hide();
   lockSay('Unlocking...');
-  root.classList.add('locked');
+  root.classList.add('locked'); lockBlobRuns();
   setTimeout(tryUnlock, 150);
 }
 $('lock').addEventListener('pointerdown', (e) => { if (!e.target.closest('#lockOut')) tryUnlock(); });
@@ -910,7 +923,7 @@ content.addEventListener('touchcancel', endPull, { passive: true });
     data = { accounts: c.accounts, balance: c.balance, history: c.history, thin: c.thin, fromCache: true, loaded: true };
     $('mBalance').textContent = eur(c.balance);
     say(c.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
-    $('mTag').textContent = ''; document.body.classList.remove('loading');
+    $('mTag').textContent = '';
   }
 })();
 renderAccount();
@@ -928,11 +941,12 @@ Keypad.attach($('gMonthly'), { decimal: true });
 Keypad.attach($('accIn'), { decimal: false, max: 10, when: () => accStep === 'code' });
 renderGoals();
 renderLock();
-if (root.classList.contains('locked')) setTimeout(tryUnlock, 500);   // the cover is already up (lock.js ran first)
+if (root.classList.contains('locked')) tryUnlock();   // the cover is already up (lock.js ran first)
 showTab('money');
 setTimeout(() => loadRates(), 1500);   // after the first paint
 if (bankReturn) showTab('settings');   // coming back from the bank: show the result where it was started
 sizeChart();
 sb.auth.onAuthStateChange((_event, session) => onSession(session));
 sb.auth.getSession().then(({ data: d }) => onSession(d.session));
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data === 'updated' && performance.now() < 10000) location.reload(); });   // a newer page arrived while this one was still opening
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { /* the app works without it */ });
