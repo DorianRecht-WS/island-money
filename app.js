@@ -687,8 +687,7 @@ async function payGo() {
     await PayLock.verify(ctl.signal);
     if (ctl !== payCtl) return;
     payUnlocked = true; renderPay();
-    $('payNote').textContent = 'Hold your phone to the reader. Your wallet opens ready to tap, with the card you chose as default there.';
-    location.href = walletLink();   // opens the wallet app (if the browser holds the tap back, the button below does it)
+    $('payNote').textContent = 'Unlocked. To pay in a shop, open your wallet with the button below and hold the phone to the reader.';   // (it no longer jumps to the wallet by itself)
   } catch (e) {
     if (ctl === payCtl) $('payNote').textContent = e && e.name === 'NotAllowedError' ? 'Not unlocked. Tap Unlock to try again.' : 'Could not unlock. Tap Unlock to try again.';
   }
