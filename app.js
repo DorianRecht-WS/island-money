@@ -450,17 +450,26 @@ function renderGrowth(all) {
 // ---- adding and editing: tap a row to change what it is worth today
 function openAssetForm(a) {
   editingAsset = a || 'new';
-  $('assetForm').hidden = false; $('assetAdd').classList.add('open'); $('assetAdd').setAttribute('aria-label', 'Close the form');
+  const wasHidden = $('sheet').hidden;
+  $('sheet').hidden = false; $('sheetTitle').textContent = a ? 'Edit' : 'New saving or investment';
+  if (wasHidden && !reduced) { $('assetForm').animate([{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2, .9, .3, 1)' }); $('sheetBg').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260 }); }
   $('asName').value = a ? a.name : ''; $('asKind').value = a ? a.kind : 'investment'; syncKind();
   $('asInvested').value = a ? String(a.invested) : ''; $('asValue').value = a ? String(grown(a)) : '';
   $('asRate').value = a && a.rate ? String(a.rate) : '';
   $('asSince').value = a ? a.since : ymd(new Date());
-  $('asErr').textContent = ''; $('asCancel').textContent = a ? 'Delete' : 'Cancel';
+  $('asErr').textContent = ''; $('asCancel').textContent = a ? 'Delete' : 'Cancel'; $('asCancel').classList.toggle('danger', !!a);
   $('asChips').hidden = !!a;   // quick names only when adding
   renderRates(); loadRates();
-  $('asName').focus();
+  if (!a) $('asName').focus();   // (not when editing: the keyboard would hide the sheet)
 }
-function closeAssetForm() { editingAsset = null; $('assetForm').hidden = true; $('assetAdd').classList.remove('open'); $('assetAdd').setAttribute('aria-label', 'Add savings or an investment'); }
+function closeAssetForm() {
+  editingAsset = null;
+  if ($('sheet').hidden) return;
+  if (reduced) { $('sheet').hidden = true; return; }
+  const out = $('assetForm').animate([{ transform: 'none' }, { transform: 'translateY(100%)' }], { duration: 260, easing: 'cubic-bezier(.4, 0, 1, 1)' });
+  $('sheetBg').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260 });
+  out.onfinish = () => { if (!editingAsset) $('sheet').hidden = true; };
+}
 // the type switch: the highlighted pill, "put in" only for an investment, and the rates that fit the type
 function syncKind() {
   const kind = $('asKind').value;
@@ -470,7 +479,10 @@ function syncKind() {
 }
 $('asKindSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { $('asKind').value = b.dataset.k; syncKind(); } });
 $('mNw').addEventListener('click', () => showTab('wealth'));
-$('assetAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } $('assetForm').hidden ? openAssetForm(null) : closeAssetForm(); });
+$('assetAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } openAssetForm(null); });
+$('sheetBg').addEventListener('click', closeAssetForm);
+$('sheetX').addEventListener('click', closeAssetForm);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sheet').hidden) closeAssetForm(); });
 $('assetList').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); if (li && user) openAssetForm(assets.find((a) => a.id === li.dataset.id)); });
 $('assetList').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const li = e.target.closest('li[data-id]'); if (li && user) openAssetForm(assets.find((a) => a.id === li.dataset.id)); } });
 $('asChips').addEventListener('click', (e) => {
@@ -543,6 +555,50 @@ async function loadRates(force) {
     renderRates();
   } catch (e) { console.error(e); }   // no rates: the form just has no rate buttons
 }
+// ---- the app lock (lock.js): your device's fingerprint, face or screen-lock code opens the app
+const root = document.documentElement;
+let unlockCtl = null, hiddenAt = 0;   // unlockCtl: the unlock attempt in progress (a new tap on Unlock replaces it)
+const lockSay = (t) => { $('lockMsg').textContent = t; };
+async function tryUnlock() {
+  if (!root.classList.contains('locked')) return;
+  if (unlockCtl) unlockCtl.abort();
+  const ctl = unlockCtl = new AbortController();
+  lockSay('Waiting for your fingerprint, face or phone code...');
+  try { await AppLock.verify(ctl.signal); if (ctl !== unlockCtl) return; root.classList.remove('locked'); blobRuns(); sizeChart(); }
+  catch (e) { if (ctl === unlockCtl) lockSay(e && e.name === 'NotAllowedError' ? 'Not unlocked. Tap Unlock to try again.' : 'Could not unlock. Tap Unlock to try again.'); }
+}
+function lockNow() {
+  if (!AppLock.enabled() || root.classList.contains('locked')) return;
+  closeAssetForm(); editing && endEdit();
+  lockSay('Use your fingerprint, face or phone code to open it.');
+  root.classList.add('locked');
+  setTimeout(tryUnlock, 250);
+}
+$('lockGo').addEventListener('click', tryUnlock);
+$('lockOut').addEventListener('click', async () => { AppLock.disable(); root.classList.remove('locked'); await sb.auth.signOut(); renderLock(); });   // signed out: nothing of yours is on screen
+// away for a while (30 s): locked again when you come back
+document.addEventListener('visibilitychange', () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 30000) lockNow(); });
+async function renderLock() {
+  const ok = await AppLock.supported(), on = AppLock.enabled();
+  $('lockSw').classList.toggle('on', on); $('lockSw').setAttribute('aria-checked', String(on));
+  $('lockSw').disabled = !ok && !on;
+  $('lockSmall').textContent = on ? 'On: it asks for your fingerprint, face or phone code' : ok ? 'Ask for your fingerprint, face or phone code' : 'This device or browser cannot do it';
+  $('lockSmall').classList.remove('err');
+}
+$('lockSw').addEventListener('click', async () => {
+  $('lockSw').disabled = true;
+  try {
+    if (AppLock.enabled()) { await AppLock.verify(); AppLock.disable(); }   // turning it off needs you too
+    else await AppLock.enable(user && user.email);
+    await renderLock();
+  } catch (e) {
+    await renderLock();
+    $('lockSmall').textContent = e && e.name === 'NotAllowedError' ? 'Cancelled, nothing changed' : 'It did not work on this device';
+    $('lockSmall').classList.add('err');
+  }
+  $('lockSw').disabled = false;
+});
+
 // ---- who is signed in
 function onSession(session) {
   const next = session ? session.user : null;
@@ -610,6 +666,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function reloadNow() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration().then((r) => r && r.update()).catch(() => {});
   await sleep(450);   // the spinner is seen for a moment first
+  try { sessionStorage.setItem('money.reload', String(Date.now())); } catch { /* ignore */ }   // a reload you asked for does not lock the app again
   location.reload();
 }
 function endPull() {
@@ -635,6 +692,8 @@ renderAccount();
 renderBank();
 renderWealth();
 renderRates();
+renderLock();
+if (root.classList.contains('locked')) setTimeout(tryUnlock, 500);   // the cover is already up (lock.js ran first)
 showTab('money');
 setTimeout(() => loadRates(), 1500);   // after the first paint
 if (bankReturn) showTab('settings');   // coming back from the bank: show the result where it was started

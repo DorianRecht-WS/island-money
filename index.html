@@ -14,9 +14,17 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>
+  // The app lock: when it is on, the page starts locked (the cover hides everything until the device says it is you).
+  // A reload you asked for yourself (pull down) and a quick trip to another app do not lock it again.
+  try {
+    var lk = JSON.parse(localStorage.getItem('money.lock') || 'null'), re = +sessionStorage.getItem('money.reload') || 0;
+    if (lk && lk.id && Date.now() - re > 15000) document.documentElement.classList.add('locked');
+  } catch (e) { /* no storage: no lock */ }
+</script>
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=18">
+<link rel="stylesheet" href="web.css?v=19">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -100,27 +108,6 @@
           <i data-ic="invest"></i>
           <span class="k">Savings &amp; investments</span>
           <ul id="assetList" class="alist"></ul>
-          <form id="assetForm" class="aform" hidden autocomplete="off">
-            <div class="fl wide">
-              <span class="k">Type</span>
-              <div class="seg" id="asKindSeg" role="group" aria-label="Type">
-                <button type="button" data-k="savings">Savings</button><button type="button" data-k="investment" class="on">Investment</button><button type="button" data-k="property">Property</button><button type="button" data-k="debt">Debt</button>
-              </div>
-              <input type="hidden" id="asKind" value="investment">
-            </div>
-            <div class="chips wide" id="asChips">
-              <button type="button" data-n="Livret A" data-k="savings" data-r="livret-a">Livret A</button><button type="button" data-n="Livret Jeune" data-k="savings" data-r="livret-jeune">Livret Jeune</button><button type="button" data-n="LDDS" data-k="savings" data-r="ldds">LDDS</button><button type="button" data-n="LEP" data-k="savings" data-r="lep">LEP</button><button type="button" data-n="PEL" data-k="savings" data-r="pel">PEL</button><button type="button" data-n="PEA" data-k="investment">PEA</button><button type="button" data-n="Assurance vie" data-k="investment">Assurance vie</button><button type="button" data-n="Crypto" data-k="investment">Crypto</button>
-            </div>
-            <label class="fl wide"><span class="k">Name</span><input class="field" id="asName" maxlength="60" placeholder="PEA, Livret A, Flat..." required></label>
-            <label class="fl"><span class="k">Worth now (&euro;)</span><input class="field" id="asValue" inputmode="decimal" maxlength="14" placeholder="0" required></label>
-            <label class="fl" id="asInvestedBox"><span class="k">Put in (&euro;)</span><input class="field" id="asInvested" inputmode="decimal" maxlength="14" placeholder="0"></label>
-            <label class="fl"><span class="k">Interest per year (%)</span><input class="field" id="asRate" inputmode="decimal" maxlength="6" placeholder="0"></label>
-            <label class="fl"><span class="k">Since</span><input class="field" id="asSince" type="date"></label>
-            <div class="chips wide" id="asRates"></div>
-            <small class="fine wide" id="asRatesNote"></small>
-            <p class="err wide" id="asErr" role="alert"></p>
-            <div class="abtns wide"><button class="pillbtn primary" id="asSave" type="submit">Save</button><button class="pillbtn" id="asCancel" type="button">Cancel</button></div>
-          </form>
           <button class="mplus" id="assetAdd" type="button" aria-label="Add savings or an investment"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
         </div>
       </section>
@@ -154,6 +141,11 @@
             <button class="pillbtn primary" id="bankGo" type="submit">Continue</button>
           </form>
         </div>
+        <div class="group notch" id="lockGroup">
+          <i data-ic="lock"></i>
+          <span class="label">Security</span>
+          <div class="setrow"><span>Lock the app<small id="lockSmall">Ask for your fingerprint, face or phone code</small></span><button class="switch" id="lockSw" type="button" role="switch" aria-checked="false" aria-label="Lock the app"></button></div>
+        </div>
         <div class="group notch">
           <i data-ic="gear"></i>
           <span class="label">Appearance</span>
@@ -177,11 +169,52 @@
     </nav>
   </div>
 </div>
+<!-- the add / edit sheet: slides up from the bottom, laid out like the Settings lists -->
+<div id="sheet" hidden>
+  <div id="sheetBg"></div>
+  <form id="assetForm" class="sheetpanel" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="shhead"><b id="sheetTitle">New</b><button type="button" id="sheetX" class="shx" aria-label="Close">&times;</button></div>
+    <div class="seg" id="asKindSeg" role="group" aria-label="Type">
+      <button type="button" data-k="savings">Savings</button><button type="button" data-k="investment" class="on">Investment</button><button type="button" data-k="property">Property</button><button type="button" data-k="debt">Debt</button>
+    </div>
+    <input type="hidden" id="asKind" value="investment">
+    <div class="shgroup">
+      <label class="srow"><span>Name</span><input id="asName" maxlength="60" placeholder="PEA, Livret A, Flat" required></label>
+      <div class="hscroll" id="asChips">
+        <button type="button" data-n="Livret A" data-k="savings" data-r="livret-a">Livret A</button><button type="button" data-n="Livret Jeune" data-k="savings" data-r="livret-jeune">Livret Jeune</button><button type="button" data-n="LDDS" data-k="savings" data-r="ldds">LDDS</button><button type="button" data-n="LEP" data-k="savings" data-r="lep">LEP</button><button type="button" data-n="PEL" data-k="savings" data-r="pel">PEL</button><button type="button" data-n="PEA" data-k="investment">PEA</button><button type="button" data-n="Assurance vie" data-k="investment">Assurance vie</button><button type="button" data-n="Crypto" data-k="investment">Crypto</button>
+      </div>
+    </div>
+    <div class="amtbox"><span class="k">Worth now</span><div class="amtin"><i>&euro;</i><input id="asValue" inputmode="decimal" maxlength="14" placeholder="0" required aria-label="Worth now in euros"></div></div>
+    <div class="shgroup">
+      <label class="srow" id="asInvestedBox"><span>Put in</span><input id="asInvested" inputmode="decimal" maxlength="14" placeholder="0 &euro;"></label>
+      <label class="srow"><span>Interest per year</span><input id="asRate" inputmode="decimal" maxlength="6" placeholder="0 %"></label>
+      <div class="hscroll" id="asRates"></div>
+      <label class="srow"><span>Since</span><input id="asSince" type="date"></label>
+    </div>
+    <small class="fine" id="asRatesNote"></small>
+    <p class="err" id="asErr" role="alert"></p>
+    <button class="pillbtn primary bigbtn" id="asSave" type="submit">Save</button>
+    <button class="shlink" id="asCancel" type="button">Cancel</button>
+  </form>
+</div>
+
+<!-- the lock cover: shown instead of the app while it is locked -->
+<div id="lock" role="dialog" aria-label="Island Money is locked">
+  <div id="lockCard" class="notch">
+    <i data-ic="lock"></i>
+    <b>Island Money is locked</b>
+    <small id="lockMsg">Use your fingerprint, face or phone code to open it.</small>
+    <button class="pillbtn primary bigbtn" id="lockGo" type="button">Unlock</button>
+    <button class="shlink" id="lockOut" type="button">Sign out instead</button>
+  </div>
+</div>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script defer src="config.js"></script>
 <script defer src="icons.js"></script>
 <script defer src="notch.js?v=6"></script>
 <script defer src="wealth.js?v=3"></script>
-<script defer src="app.js?v=22"></script>
+<script defer src="lock.js?v=2"></script>
+<script defer src="app.js?v=24"></script>
 </body>
 </html>
