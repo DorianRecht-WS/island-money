@@ -29,6 +29,8 @@ const notchState = new WeakMap();
 // On a phone every frame of the springs repaints a clipped card on the main thread, which is what makes it stutter: step them at 30 fps
 // (an even pace reads smoother than an uneven 60), and let the blob rest while any spring runs (window.notchBusy).
 const NOTCH_HALF = matchMedia('(pointer: coarse)').matches;
+// On a phone the bite is simply left open and only the chips spring in (transforms run on the graphics chip, the morphing outline does not)
+const NOTCH_LITE = NOTCH_HALF || location.search.includes('lite');
 window.notchBusy = 0;
 function notchRender(el) {
   const n = notchState.get(el);
@@ -83,6 +85,13 @@ function notchAttach(el) {
 function notchReplay(el) {
   const n = notchState.get(el);
   if (!n) return;
+  if (NOTCH_LITE) {
+    n.u = 1; n.v = 0; n.target = 1; notchRender(el);
+    const opts = { duration: 650, easing: 'cubic-bezier(.2, 1.4, .3, 1)', fill: 'backwards' };
+    if (n.chip) n.chip.animate([{ transform: 'rotate(70deg) scale(.3)', opacity: 0 }, { transform: 'rotate(-20deg) scale(1.18)', opacity: 1, offset: .6 }], opts);
+    if (n.chip2) n.chip2.animate([{ transform: 'rotate(0deg) scale(.4)', opacity: 0 }], opts);
+    return;
+  }
   n.u = 0; n.v = 0; n.target = 1;
   notchStep(el);
 }
