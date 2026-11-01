@@ -234,7 +234,7 @@ $('accForm').addEventListener('submit', async (e) => {
 let link = null;   // the connected bank (a bank_links row), or null
 async function load(animate) {
   const [a, h, l] = await Promise.all([
-    sb.from('bank_accounts').select('id,name,opening_balance,opened_on').order('created_at'),
+    sb.from('bank_accounts').select('*').order('created_at'),   // (all columns: works before and after the account-kind migration)
     sb.from('balance_history').select('day,balance').order('day'),
     sb.from('bank_links').select('id,bank_name,valid_until,synced_at,last_error').order('created_at', { ascending: false }).limit(1),
   ]);
@@ -244,7 +244,10 @@ async function load(animate) {
   renderBank();
   const history = h.data.map((x) => Number(x.balance));
   const before = data.balance, had = !!data.fromCache;   // had: the saved balance was already on screen
-  data = { accounts: a.data.length, accountId: a.data[0] && a.data[0].id, balance: history.length ? history[history.length - 1] : 0, history: history.length > 1 ? history : [history[0] || 0, history[0] || 0], loaded: true };
+  // current accounts make up the balance; livrets, investment accounts and loans from the bank are listed on the Wealth tab
+  const cash = a.data.filter((x) => !x.kind || x.kind === 'cash');
+  bankAssets = a.data.filter((x) => x.kind && x.kind !== 'cash').map((x) => ({ id: 'bank:' + x.id, kind: x.kind, name: x.name, invested: 0, value: Math.abs(Number(x.balance) || 0), since: null, fromBank: true }));
+  data = { accounts: cash.length, accountId: cash[0] && cash[0].id, balance: history.length ? history[history.length - 1] : 0, history: history.length > 1 ? history : [history[0] || 0, history[0] || 0], loaded: true };
   data.thin = history.length < 2 || history.every((v) => v === history[0]);
   store.set({ uid: user.id, email: user.email || '', accounts: data.accounts, balance: data.balance, history: data.history, thin: data.thin });
   loadAssets();   // (not awaited: the balance is already on screen)
@@ -393,18 +396,23 @@ $('bankForm').addEventListener('submit', (e) => { e.preventDefault(); if ($('ban
 $('bankSync').addEventListener('click', async () => { bankNote = ''; bankBad = false; if (await bankSync(true)) await load(false); });
 
 // ---- the Wealth tab: net worth, investments with their returns, and the growth calculator (the arithmetic is in wealth.js)
-let assets = [];   // the user's assets rows (investments, savings, property, debts)
+let assets = [];   // the user's own assets rows (investments, savings, property, debts), typed in
+let bankAssets = [];   // the same kinds of thing, but read from the bank's accounts (a livret, a PEA, a loan)
+const allAssets = () => bankAssets.concat(assets);
 const KIND_COLOR = { cash: 'var(--accent)', investment: 'var(--accent-2)', savings: 'var(--ok)', property: 'var(--warn)', debt: 'var(--danger)' };
 const signed = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + eur(Math.abs(n));
 const pct = (x, digits = 1) => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x * 100).toFixed(digits) + '%';
 let editingAsset = null;   // the asset being edited, or 'new'
 
 function renderWealth() {
-  const t = Wealth.totals(data.balance, assets);
+  const all = allAssets(), t = Wealth.totals(data.balance, all);
   document.body.classList.toggle('out', !user && !pending);
-  $('wTag').textContent = user ? (assets.length ? `${assets.length} item${assets.length > 1 ? 's' : ''}` : '') : 'Signed out';
+  $('wTag').textContent = user ? (all.length ? `${all.length} item${all.length > 1 ? 's' : ''}` : '') : 'Signed out';
   $('nwAmount').textContent = user || pending ? eur(t.net) : '€-';
-  $('nwNote').textContent = user ? `Balance ${eur(t.cash)}${t.inv ? ` · investments ${eur(t.inv)}` : ''}${t.debt ? ` · debts −${eur(t.debt)}` : ''}` : 'Sign in to see your net worth';
+  $('nwNote').textContent = user ? `Balance ${eur(t.cash)}${t.inv ? ` · investments ${eur(t.inv)}` : ''}${t.sav ? ` · savings ${eur(t.sav)}` : ''}${t.debt ? ` · debts −${eur(t.debt)}` : ''}` : 'Sign in to see your net worth';
+  // the same number on the Money tab: tap it to open Wealth
+  $('mNwAmount').textContent = user || pending ? eur(t.net) : '€-';
+  $('mNwNote').textContent = user ? `Savings ${eur(t.sav)} · investments ${eur(t.inv)}${t.debt ? ` · debts −${eur(t.debt)}` : ''}` : 'Sign in to see it';
   // the split of what you own, as one bar (debts are shown in the legend: they are not part of what you own)
   const parts = [['cash', 'Balance', Math.max(0, t.cash)], ['investment', 'Investments', t.inv], ['savings', 'Savings', t.sav], ['property', 'Property', t.prop]].filter((p) => p[2] > 0);
   const own = parts.reduce((s, p) => s + p[2], 0) || 1;
@@ -415,10 +423,10 @@ function renderWealth() {
   $('stIn').textContent = eur(t.invested); $('stNow').textContent = eur(t.inv);
   $('stGain').textContent = g ? signed(g.amount) : '€0'; $('stGainK').textContent = g ? `Gain ${pct(g.pct)}` : 'Gain';
   $('stGain').className = g ? (g.amount >= 0 ? 'up' : 'down') : '';
-  $('assetList').innerHTML = assets.map((a) => {
-    const gn = a.kind === 'investment' ? Wealth.gain(a.invested, a.value) : null, yr = a.kind === 'investment' ? Wealth.yearly(a.invested, a.value, a.since) : null;
-    const sub = gn ? `${pct(gn.pct)}${yr !== null ? ` · ${pct(yr)}/yr` : ''}` : Wealth.KINDS[a.kind];
-    return `<li data-id="${esc(a.id)}" tabindex="0"><i style="background:${KIND_COLOR[a.kind]}"></i><div class="main"><b>${esc(a.name)}</b><small${gn ? ` class="${gn.amount >= 0 ? 'up' : 'down'}"` : ''}>${sub}</small></div><span class="amt">${a.kind === 'debt' ? '−' : ''}${eur(a.value)}</span></li>`;
+  $('assetList').innerHTML = all.map((a) => {
+    const gn = a.kind === 'investment' ? Wealth.gain(a.invested, a.value) : null, yr = a.kind === 'investment' && a.since ? Wealth.yearly(a.invested, a.value, a.since) : null;
+    const sub = gn ? `${pct(gn.pct)}${yr !== null ? ` · ${pct(yr)}/yr` : ''}` : a.fromBank ? `${Wealth.KINDS[a.kind]} · from your bank` : Wealth.KINDS[a.kind];
+    return `<li${a.fromBank ? ' class="bank"' : ` data-id="${esc(a.id)}" tabindex="0"`}><i style="background:${KIND_COLOR[a.kind]}"></i><div class="main"><b>${esc(a.name)}</b><small${gn ? ` class="${gn.amount >= 0 ? 'up' : 'down'}"` : ''}>${sub}</small></div><span class="amt">${a.kind === 'debt' ? '−' : ''}${eur(a.value)}</span></li>`;
   }).join('') || '<li class="empty">Add an investment, a savings account, property or a debt to see your net worth.</li>';
   renderProjection();
 }
@@ -434,6 +442,7 @@ function openAssetForm(a) {
   $('asName').focus();
 }
 function closeAssetForm() { editingAsset = null; $('assetForm').hidden = true; $('assetAdd').textContent = 'Add'; }
+$('mNw').addEventListener('click', () => showTab('wealth'));
 $('assetAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } $('assetForm').hidden ? openAssetForm(null) : closeAssetForm(); });
 $('assetList').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); if (li && user) openAssetForm(assets.find((a) => a.id === li.dataset.id)); });
 $('assetList').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const li = e.target.closest('li[data-id]'); if (li && user) openAssetForm(assets.find((a) => a.id === li.dataset.id)); } });
@@ -471,7 +480,7 @@ const PJ_KEY = 'money.projection';
 const pj = (() => { try { return { monthly: 200, rate: 6, years: 20, ...JSON.parse(localStorage.getItem(PJ_KEY)) }; } catch { return { monthly: 200, rate: 6, years: 20 }; } })();
 $('pjMonthly').value = pj.monthly; $('pjRate').value = pj.rate; $('pjYears').value = pj.years;
 function renderProjection() {
-  const t = Wealth.totals(data.balance, assets);
+  const t = Wealth.totals(data.balance, allAssets());
   const monthly = parseMoney($('pjMonthly').value), rate = parseFloat(String($('pjRate').value).replace(',', '.')), years = parseInt($('pjYears').value, 10);
   const ok = monthly !== null && monthly >= 0 && Number.isFinite(rate) && rate >= -50 && rate <= 100 && years >= 1 && years <= 60;
   const svg = $('pjChart');
@@ -501,7 +510,7 @@ function onSession(session) {
     // not inside the auth callback: it holds the auth lock. Then, with a bank connected, read it (the function paces itself) and show what it found.
     setTimeout(() => load(true).then(() => bankSync(false)).then((fresh) => fresh && load(false)), 0);
   } else {
-    store.clear(); link = null; renderBank(); assets = []; closeAssetForm(); renderWealth();
+    store.clear(); link = null; renderBank(); assets = []; bankAssets = []; closeAssetForm(); renderWealth();
     data = { balance: 0, history: [0, 0], accounts: 0, thin: true, loaded: true };
     accStep = 'idle'; renderAccount(); render(false);
   }

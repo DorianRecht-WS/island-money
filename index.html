@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=12">
+<link rel="stylesheet" href="web.css?v=13">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -54,6 +54,12 @@
             <small id="mIO" class="sk">Loading your balance</small>
           </div>
         </div>
+        <button id="mNw" class="notch" type="button" aria-label="Net worth, open the Wealth tab">
+          <i data-ic="coins"></i>
+          <span class="k">Net worth</span>
+          <b id="mNwAmount">&euro;0</b>
+          <small id="mNwNote"></small>
+        </button>
         <div id="mChart" class="notch">
           <i data-ic="trend"></i>
           <div class="ch"><span class="k">Last 30 days</span><span id="mbNote" class="sk"></span></div>
@@ -87,7 +93,7 @@
         </div>
         <div id="invCard" class="notch">
           <i data-ic="invest"></i>
-          <div class="ch"><span class="k">Investments &amp; more</span><button class="pillbtn" id="assetAdd" type="button">Add</button></div>
+          <div class="ch"><span class="k">Savings &amp; investments</span><button class="pillbtn" id="assetAdd" type="button">Add</button></div>
           <div id="invStats" class="stats">
             <div><span class="k">Put in</span><b id="stIn">&euro;0</b></div>
             <div><span class="k">Worth now</span><b id="stNow">&euro;0</b></div>
@@ -175,6 +181,6 @@
 <script defer src="icons.js"></script>
 <script defer src="notch.js?v=5"></script>
 <script defer src="wealth.js?v=1"></script>
-<script defer src="app.js?v=15"></script>
+<script defer src="app.js?v=16"></script>
 </body>
 </html>

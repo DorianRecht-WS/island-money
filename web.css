@@ -169,3 +169,12 @@ input { user-select: text; -webkit-user-select: text; }
 .fine { display: block; margin-top: var(--sp-2); font-size: var(--fs-micro); color: var(--text-4); }
 body.out #nwBar, body.out #nwLegend { opacity: .3; }
 @media (max-width: 380px) { #nwAmount { font-size: 32px; } .stats b { font-size: 13px; } }
+
+/* the net worth card on the Money tab: a button that opens Wealth */
+#mNw { display: block; width: 100%; text-align: left; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; padding: var(--sp-3) var(--sp-4); -webkit-appearance: none; appearance: none; }
+#mNw .k { display: block; }
+#mNw b { display: block; margin: 2px 0 1px; font-size: 24px; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; color: var(--text-hi); font-variant-numeric: tabular-nums; }
+#mNw small { display: block; font-size: var(--fs-meta); color: var(--text-3); padding-right: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#mNw::after { content: "\203A"; position: absolute; right: var(--sp-4); bottom: var(--sp-3); z-index: 1; font-size: 22px; line-height: 1; color: var(--text-3); }
+#mNw:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 2px; }
+.alist li.bank { cursor: default; }
