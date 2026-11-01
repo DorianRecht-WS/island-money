@@ -1,0 +1,360 @@
+﻿/* ==========================================================================================================
+   Dynamic Island: design system
+   Everything visual comes from the tokens below. Components never use a raw colour, size or radius.
+   Themes change the colour tokens only; the accent is one token (--accent) that the settings can swap.
+   ========================================================================================================== */
+
+/* ---- tokens: dark (default) ------------------------------------------------------------------------- */
+:root {
+  /* surfaces: the navy of the "Design System Color Palette - Dark Mode" shot (Daniel Wodziczka, Dribbble) */
+  --bg: #0b0e16;            /* the island itself */
+  --card: #10141e;          /* a panel resting on the island: close to the background */
+  --card-line: #1a2030;     /* its outline */
+  --surface: #151a26;       /* hover / raised */
+  --surface-2: #1d2434;     /* controls, tracks, hovered rows */
+  --line: #151a26;          /* dividers */
+  --line-2: #272e45;        /* borders of controls */
+  --edge: transparent;      /* outline of the island (light theme only) */
+
+  /* text, from strongest to faintest */
+  --text-hi: #f3f6fc;
+  --text: #dfe4ef;
+  --text-2: #a4adc2;
+  --text-3: #728099;
+  --text-4: #4c566b;
+
+  /* accent: attention, selection, "needs you" */
+  --accent: #78a1e2;       /* d.blue-80: interactive elements */
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, var(--bg));
+  --accent-2: var(--accent);  /* the second hue the accent mixes into */
+  --on-accent: #0b0e16;
+  --alert: #e5392b;         /* the anger mark; never themed */
+  --ok: #99e1d7;            /* d.green-80 */
+  --warn: #eed263;          /* d.yellow-80 */
+  --danger: #df9098;        /* d.red-80 */
+
+  /* the blob */
+  --blob-ink: #eceff6;
+  --blob-paper: var(--bg);
+
+  /* type */
+  --font: "Segoe UI Variable", "Segoe UI", sans-serif;
+  --mono: "Cascadia Mono", Consolas, monospace;
+  --fs-micro: 9.5px;        /* uppercase labels */
+  --fs-meta: 11px;          /* secondary lines, links */
+  --fs-body: 12px;          /* rows, controls */
+  --fs-title: 13px;         /* now playing title, numbers */
+  --fs-code: 20px;          /* one-time codes */
+
+  /* space, radius, motion */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --float: 8px;               /* the island floats this far below the top edge of the screen */
+  --r-1: 6px; --r-2: 8px; --r-3: 12px; --r-pill: 999px; --r-island: 22px; --r-closed: 12px;
+  --ease: cubic-bezier(.2, .9, .3, 1);
+  --spring: cubic-bezier(.3, 1.35, .45, 1);   /* a small overshoot, then settle */
+  --t-fast: .12s;
+}
+
+/* ---- tokens: light --------------------------------------------------------------------------------- */
+:root[data-theme="light"] {
+  --bg: #eef0f6;
+  --card: #e4e7f0;
+  --card-line: #d3d8e5;
+  --surface: #dde1ec;
+  --surface-2: #d1d6e4;
+  --line: #dde1ec;
+  --line-2: #b9c0d3;
+  --edge: rgba(11, 14, 22, .12);
+
+  --text-hi: #0b0e16;
+  --text: #151a26;
+  --text-2: #2f3850;
+  --text-3: #5b6580;
+  --text-4: #8e97ad;
+
+  --on-accent: #ffffff;
+  --ok: #3f9f93;
+  --warn: #b8941f;
+  --danger: #cf757c;
+  --blob-ink: #151a26;
+}
+
+/* ---- base ------------------------------------------------------------------------------------------ */
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: transparent; font-family: var(--font); color: var(--text); user-select: none; }
+button { font: inherit; color: inherit; }
+
+/* The window is transparent and always on top, so every animated frame costs a full window redraw. Pulses therefore
+   blink in steps (two redraws a cycle) instead of fading at 60 fps: the same signal for a fraction of the GPU. */
+@keyframes pulse { 50% { opacity: .25; } }
+
+/* ---- the island ------------------------------------------------------------------------------------ */
+#pill {
+  position: absolute; top: var(--float); left: 50%; transform: translateX(-50%);
+  width: 156px; height: 22px; background: var(--bg); border: 1px solid var(--edge);
+  border-radius: var(--r-pill); overflow: hidden;
+  transition: width .2s var(--ease), height .2s var(--ease), border-radius .2s, box-shadow .2s;
+  contain: layout paint;
+}
+#pill.open { width: 480px; border-radius: var(--r-island); box-shadow: 0 14px 34px rgba(0, 0, 0, .38); }
+#pill.np:not(.open) { width: 240px; }
+#pill.nt:not(.open) { width: 290px; }
+
+/* closed: the title of what is playing, and a dot while Claude works */
+#pillnp { position: absolute; inset: 0; padding: 0 24px; display: flex; align-items: center; justify-content: center; font-size: 10px; line-height: 20px;
+  letter-spacing: .02em; color: var(--text-2); white-space: nowrap; opacity: 0; pointer-events: none; }
+#pillnp span { overflow: hidden; text-overflow: ellipsis; }
+#pill.np:not(.open) #pillnp, #pill.nt:not(.open) #pillnp { opacity: 1; }
+#dot { position: absolute; top: 50%; left: 11px; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: transparent; transition: opacity var(--t-fast); }
+#dot.working { background: var(--accent); }   /* steady: while the pill is closed nothing may animate */
+.open #dot { opacity: 0; }
+
+#content { position: absolute; top: 0; left: 0; width: 480px; padding: 14px var(--sp-4); opacity: 0; transition: opacity .08s; pointer-events: none; }
+.open #content { opacity: 1; transition: opacity .15s .05s; pointer-events: auto; }
+/* a closed pill must cost nothing: no animation runs and the hidden content is not painted */
+#pill:not(.open) #content { visibility: hidden; transition: opacity .08s, visibility 0s .1s; }
+#pill:not(.open) #content *, #pill:not(.open) #content *::after { animation-play-state: paused !important; }
+
+.view { display: none; min-height: 96px; }
+.view.on { display: block; animation: viewIn .34s var(--ease); }
+@keyframes viewIn { from { opacity: 0; transform: translateX(var(--tab-dx, 0px)); } }
+
+/* ---- navigation ------------------------------------------------------------------------------------ */
+nav { position: relative; display: flex; align-items: center; gap: 18px; margin-bottom: var(--sp-3); border-bottom: 1px solid var(--line); }
+nav > button { background: none; border: 0; color: var(--text-3); font-size: var(--fs-body); height: 28px; padding: 0; display: inline-flex; align-items: center; cursor: pointer;
+  border-bottom: 1.5px solid transparent; margin-bottom: -1px; position: relative; }
+nav > button:hover { color: var(--text-2); }
+nav > button.on { color: var(--text-hi); border-bottom-color: transparent; }
+nav > button em { font-style: normal; font-size: var(--fs-micro); margin-left: 5px; padding: 1px 5px; border-radius: var(--r-2); background: var(--accent); color: var(--on-accent); display: none; }
+nav > button em.on { display: inline-block; }
+#gear { width: 22px; justify-content: center; }
+#gear svg { width: 15px; height: 15px; }
+#gear i, #ctl i, .tile i { display: contents; }
+#gear.on { border-bottom-color: transparent; color: var(--accent); }
+/* Claude's working sessions live in the tab row, on the right */
+#cl { margin-left: auto; margin-bottom: -1px; display: none; align-items: center; gap: 6px; height: 28px; font-size: var(--fs-meta); color: var(--text-2); max-width: 150px; }
+#cl.on { display: flex; }
+#cl i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; animation: pulse 1.4s steps(1, end) infinite; }
+#cl b { font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+nav:not(:has(#cl.on)) #gear { margin-left: auto; }
+
+/* ---- shared components ----------------------------------------------------------------------------- */
+/* a small uppercase label */
+#npApp, .m b, .label { display: block; font-size: var(--fs-micro); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--text-4); }
+/* a quiet text button */
+.link { background: none; border: 0; color: var(--text-3); font-size: var(--fs-meta); cursor: pointer; padding: 0; }
+.link:hover { color: var(--text); }
+/* a list row that lights up on hover */
+.row { display: flex; gap: var(--sp-2); align-items: flex-start; padding: 6px var(--sp-2); margin: 0 calc(var(--sp-2) * -1); border-radius: var(--r-2); cursor: pointer; position: relative; }
+.row:hover, .f:hover, .rp:hover { background: var(--surface-2); }
+/* a tag; .hot is the accent one */
+.chip { font-style: normal; font-size: 10px; padding: 1px var(--sp-2); border-radius: 9px; background: var(--surface-2); color: var(--text-3); white-space: nowrap; flex: none; }
+.chip.hot { background: var(--accent-soft); color: var(--accent); }
+/* a scrolling list */
+.scroll { overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+/* a segmented control */
+.seg { display: inline-flex; gap: var(--sp-1); }
+.seg button { background: none; border: 1px solid var(--line-2); color: var(--text-3); font-size: var(--fs-meta); padding: 3px var(--sp-3); border-radius: var(--r-pill); cursor: pointer; }
+.seg button:hover { color: var(--text); }
+.seg button.on { background: var(--surface-2); color: var(--text-hi); border-color: var(--line-2); }
+/* a text field */
+.field { width: 100%; background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-2); color: var(--text); font-size: var(--fs-body); padding: 6px 9px; margin: 2px 0 var(--sp-1); outline: none; }
+.field:focus { border-color: var(--text-4); }
+/* centred explanatory text */
+.hint { font-size: var(--fs-body); color: var(--text-3); text-align: center; padding: 30px var(--sp-3); line-height: 1.5; }
+.hint code { color: var(--text-2); }
+.hint .code { display: block; font: 600 var(--fs-code) var(--mono); letter-spacing: .12em; color: var(--text-hi); margin: var(--sp-2) 0; }
+/* a one-line header and footer inside a tab */
+.bar { display: flex; align-items: baseline; justify-content: space-between; font-size: var(--fs-meta); color: var(--text-3); }
+.bar.top { margin-bottom: var(--sp-1); }
+.bar.foot { margin-top: var(--sp-2); padding-top: 7px; border-top: 1px solid var(--line); color: var(--text-4); }
+/* a skeleton row while loading (static on purpose) */
+.sk { display: flex; gap: 9px; padding: var(--sp-2) 0; }
+.sk i { width: 14px; height: 14px; border-radius: 4px; background: var(--surface-2); flex: none; }
+.sk b { display: block; height: 9px; border-radius: 4px; background: var(--surface-2); margin-bottom: 7px; }
+.sk div { flex: 1; }
+
+/* ---- Home ------------------------------------------------------------------------------------------ */
+#home { display: grid; grid-template-columns: 1fr 156px; gap: var(--sp-2); }
+#card { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4) var(--sp-2) var(--sp-2); min-width: 0; }
+#mascot { flex: none; width: 96px; height: 96px; cursor: pointer; transform-origin: 50% 85%; position: relative; z-index: 5; }
+/* the blob is redrawn every frame, so its SVG nodes must not be click targets: a click needs the same element at press and release */
+#mascot svg, #grabber svg { pointer-events: none; }
+/* the anger mark that pops onto the blob's head when it is angry at being poked */
+.vein { position: absolute; left: 56%; top: 17%; width: 26px; height: 26px; pointer-events: none; display: none; transform-origin: 50% 50%; }
+.vein.l { left: 18%; }
+.vein.l svg { transform: scaleX(-1); }
+.vein.on { display: block; animation: veinPop .24s steps(4, end), veinThrob .5s steps(1, end) .24s infinite; }
+@keyframes veinPop { 0% { transform: scale(.2) rotate(-12deg); } 60% { transform: scale(1.35) rotate(-12deg); } 100% { transform: scale(1) rotate(-12deg); } }
+@keyframes veinThrob { 0% { transform: scale(1) rotate(-12deg); } 50% { transform: scale(1.18) rotate(-12deg); } }
+
+#info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+#npTitle { font-size: var(--fs-title); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#npArtist { font-size: var(--fs-meta); color: var(--text-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 14px; }
+#ctl { display: flex; align-items: center; gap: var(--sp-1); margin-top: 6px; }
+#ctl button { background: none; border: 0; width: 26px; height: 26px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+#ctl button:hover { background: var(--surface-2); }
+#ctl svg { width: 16px; height: 16px; color: var(--text-2); }
+#ctl button:hover svg { color: var(--text-hi); }
+#np.idle #ctl button { opacity: .3; pointer-events: none; }
+#eq { display: none; gap: 2px; align-items: flex-end; height: 12px; margin-left: 6px; }
+#np.playing #eq { display: flex; }
+#eq b { width: 2px; height: 100%; background: var(--accent); transform-origin: bottom; animation: eq .9s steps(4, end) infinite; }
+#eq b:nth-child(2) { animation-delay: -.3s; }
+#eq b:nth-child(3) { animation-delay: -.6s; }
+@keyframes eq { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
+
+/* Home: four big buttons that land on the other tabs, and the machine's load */
+#tiles { display: grid; grid-template-rows: 1fr 1fr; gap: var(--sp-2); }
+/* the Home cards (.notch) show a round bite in their top-right corner only on hover, with the icon chip springing into it;
+   the outline is a path drawn by the page (--p0 closed, --p1 open) that the transition morphs between */
+.notch { position: relative; }
+.notch::before { content: ""; position: absolute; inset: 0; z-index: 0; background: var(--card); border-radius: 13px;
+  clip-path: var(--p, none); transition: background var(--t-fast); }
+.notch:hover::before { background: var(--surface-2); }
+.notch > * { position: relative; z-index: 1; }
+.notch > i { display: contents; }
+.notch > i > svg { position: absolute; top: 2px; right: 2px; width: 28px; height: 28px; padding: 6px; border-radius: 50%; background: var(--chip, var(--accent)); color: var(--on-accent);
+  z-index: 2; }
+.tile { min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; text-align: left;
+  padding: 0 var(--sp-3) 10px; border: 0; background: none; color: var(--text); cursor: pointer; font: inherit; }
+#tMoney { --chip: var(--accent-2); }
+.tile b { font-size: var(--fs-code); font-weight: 700; line-height: 1.05; color: var(--text-hi); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.tile > span { font-size: var(--fs-micro); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile.hot > i > svg { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.tile.hot b { color: var(--accent); }
+
+/* ---- Files ----------------------------------------------------------------------------------------- */
+/* the shelf pet: small, loose over the shelf, resting in its bottom-right corner (the page's script makes it follow the cursor) */
+#v-files { position: relative; }
+#grabber { position: absolute; right: 4px; bottom: 2px; width: 48px; height: 48px; z-index: 5; cursor: pointer; will-change: transform; }
+#grabber .vein { width: 14px; height: 14px; }
+.dragging #content * { pointer-events: none; }
+.badge { width: 42px; height: 52px; border-radius: var(--r-1); background: var(--surface-2); border: 1px solid var(--line-2); display: grid; place-items: center; font: 10px var(--mono); text-transform: uppercase; color: var(--text-3); }
+.note { width: 52px; height: 56px; padding: 6px 5px; border-radius: var(--r-1); background: var(--surface-2); border: 1px solid var(--line-2); overflow: hidden; font: 7px/1.25 var(--mono); color: var(--text-3); word-break: break-all; text-align: left; }
+.f .x { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface-2); border: 0; color: var(--text-3); cursor: pointer; font-size: 10px; line-height: 18px; padding: 0; opacity: 0; }
+.f:hover .x { opacity: 1; }
+.f .x:hover { color: var(--text-hi); background: var(--line-2); }
+
+/* ---- Money ----------------------------------------------------------------------------------------- */
+#mTag, #npSrc, #shCap { font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--text-4); }
+/* the balance sits in a wide card with the blob, like Home; below it, what is left and the line of what was spent */
+#mBal { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4) var(--sp-2) var(--sp-2); min-height: 100px; }
+#mBal #mBlob { flex: none; width: 88px; height: 88px; cursor: default; }
+#mBal #mBlob svg { pointer-events: none; }
+.mi { display: flex; flex-direction: column; min-width: 0; }
+.k { font-size: var(--fs-micro); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--text-4); }
+.mi b { font-size: 28px; font-weight: 700; line-height: 1.1; color: var(--text-hi); letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.mi small, .ml small { font-size: var(--fs-meta); color: var(--text-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mi small em { font-style: normal; font-weight: 600; }
+.mi small .in { color: var(--ok, var(--accent)); }
+.mi small .out { color: var(--text-2); }
+.mcard { background: var(--card); border-radius: 13px; padding: var(--sp-3) var(--sp-4); min-width: 0; }
+/* ---- Settings -------------------------------------------------------------------------------------- */
+#v-settings.on { display: flex; flex-direction: column; gap: var(--sp-2); }
+#v-settings .group { padding: var(--sp-3) var(--sp-4) 6px; border-radius: 13px; min-width: 0; }
+#v-settings .group:not(.notch) { background: var(--card); }
+#v-settings .group .label { display: block; margin-bottom: 2px; }
+.srow2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+#v-settings .bar.foot { margin-top: 2px; padding: 0 var(--sp-1); border-top: 0; align-items: center; }
+.quit { background: none; border: 1px solid var(--line-2); color: var(--text-3); font-size: var(--fs-meta); padding: 4px var(--sp-4); border-radius: var(--r-pill); cursor: pointer; transition: color var(--t-fast), border-color var(--t-fast); }
+.quit:hover { color: var(--alert); border-color: var(--alert); }
+.setrow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); padding: 9px 0; font-size: var(--fs-body); color: var(--text); border-bottom: 1px solid var(--card-line); }
+.setrow:last-child { border-bottom: 0; }
+.setrow > span { flex: 1; min-width: 0; white-space: nowrap; }
+.setrow > .seg, .setrow > .swatches, .setrow > .switch { flex: none; }
+.setrow small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--fs-micro); color: var(--text-3); margin-top: 2px; }
+.swatches { display: flex; gap: 10px; }
+/* a palette chip: its two accents, split in a whole circle */
+.swatches button { width: 22px; height: 22px; border-radius: 50%; border: 0; background: linear-gradient(135deg, var(--a) 50%, var(--b) 50%); cursor: pointer; padding: 0; outline: 0; flex: none; transition: transform var(--t-fast); }
+.swatches button:hover { transform: scale(1.12); }
+.swatches button.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--text-2); }
+.switch { width: 32px; height: 18px; border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--line-2); position: relative; cursor: pointer; padding: 0; flex: none; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-3); transition: transform var(--t-fast), background var(--t-fast); }
+.switch.on { background: var(--accent-soft); border-color: var(--accent); }
+.switch.on::after { transform: translateX(14px); background: var(--accent); }
+#gear.on::after { display: none; }
+
+/* the one colourful spot on Home: play/pause carries both accents */
+#ctl #pp { width: 30px; height: 30px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+#ctl #pp:hover { background: linear-gradient(135deg, var(--accent), var(--accent-2)); filter: brightness(1.12); }
+#ctl #pp svg { color: var(--on-accent); width: 15px; height: 15px; }
+
+/* a settings row whose control needs the full width */
+
+/* settings: the Money group */
+.gh { display: flex; align-items: baseline; justify-content: space-between; }
+.gh .label { margin-bottom: 0; }
+.sel { background: var(--surface-2); color: var(--text); border: 1px solid var(--line-2); border-radius: var(--r-pill); padding: 4px var(--sp-3); font-size: var(--fs-meta); outline: 0; cursor: pointer; max-width: 150px; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+/* the way to add a card: a small dashed + in the tab's top bar (faint until the tab is hovered), and a quiet placeholder when none is shown */
+.plus { position: relative; display: block; width: 14px; height: 14px; }
+.plus::before, .plus::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 1.6px; margin: -.8px 0 0 -5px; border-radius: 1px; background: var(--text-2); transition: background var(--t-fast); }
+.plus::after { transform: rotate(90deg); }
+/* the balance over time: a plain line in the right half of the balance card, clear of the corner chips */
+#mBal .mi { flex: none; }
+#mBal .mg { flex: 1; min-width: 0; align-self: flex-end; margin: 40px 6px 14px 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+#mbNote { font-size: var(--fs-meta); color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+#mbNote em { font-style: normal; font-weight: 600; }
+#mbNote .up { color: var(--ok, var(--accent)); }
+#mbNote .down { color: var(--danger, var(--accent-2)); }
+#mbChart { width: 100%; height: 58px; overflow: visible; cursor: crosshair; }
+#mbCross { stroke: var(--text-4); stroke-width: 1; opacity: 0; transition: opacity .12s; }
+#mbChart.hov #mbCross { opacity: .7; }
+#mbDot { fill: var(--accent-2); stroke: var(--card); stroke-width: 2; }
+#mbHalo { fill: var(--accent-2); opacity: .2; }
+#mbArea, #mbDot, #mbHalo { transform-box: fill-box; transform-origin: center; }
+
+/* the tab indicator slides between tabs with a little overshoot */
+#tabInd { position: absolute; left: 0; bottom: -1px; width: 0; height: 2px; border-radius: 2px; pointer-events: none;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: left .42s var(--spring), width .42s var(--spring), opacity .2s; }
+nav > button { transition: color .2s; }
+
+
+/* Home and Money are the same height: their main card is the same size (the rest of each tab is just a header and the tab bar) */
+#card, #mBal { min-height: 112px; }
+#mBal #mBlob { width: 96px; height: 96px; }
+
+/* the balance card's chart block is sized so the card stays as tall as Home's main card */
+#mBal .mg { margin: 30px 6px 10px 0; gap: 4px; }
+#mbChart { height: 48px; }
+#mBal .mg { margin: 26px 6px 4px 0; }
+#card, #mBal { height: 112px; }
+
+/* ---- Files, in the same style: the shelf is a notched card with the folder chip, as tall as Home's and Money's main cards ---- */
+#shelfCard { height: 112px; display: flex; align-items: stretch; }
+#shelf { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; padding: 0 var(--sp-3); overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+#shelfCard:has(#shelf.over)::before { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
+/* nothing on the shelf yet: a short invitation at the bottom-left, clear of the corner chip and of the blob in the bottom-right */
+#hint { width: 100%; align-self: flex-end; padding: 0 0 14px var(--sp-1); display: flex; flex-direction: column; gap: 2px; }
+#hint b { font-size: var(--fs-title); font-weight: 600; color: var(--text-hi); }
+#hint small { font-size: var(--fs-meta); color: var(--text-3); }
+.f { flex: none; width: 78px; position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--sp-2) var(--sp-1) 6px; border-radius: var(--r-3); cursor: grab; transition: background var(--t-fast); }
+.f .ic { width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; }
+.f img { max-width: 46px; max-height: 46px; border-radius: var(--r-2); object-fit: contain; }
+.f .n { width: 100%; text-align: center; font-size: var(--fs-micro); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f .badge { width: 36px; height: 44px; }
+.f .note { width: 44px; height: 46px; }
+
+#shelf { scrollbar-width: none; }
+#shelf::-webkit-scrollbar { display: none; }
+
+/* ---- the account card in Settings ---- */
+.pillbtn { flex: none; background: none; border: 1px solid var(--line-2); color: var(--text-2); font-size: var(--fs-meta); padding: 5px var(--sp-4); border-radius: var(--r-pill); cursor: pointer; transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast); }
+.pillbtn:hover { color: var(--text-hi); border-color: var(--text-3); }
+.pillbtn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.pillbtn.primary:hover { filter: brightness(1.1); color: var(--on-accent); }
+.av { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font-style: normal; font-weight: 700; font-size: var(--fs-body); }
+.av[hidden] { display: none; }
+#accText .code { display: block; font: 600 var(--fs-code) var(--mono); letter-spacing: .14em; color: var(--text-hi); }
+.setrow small.err { color: var(--danger, #e66); }
+#mTag.live { color: var(--ok, var(--accent)); }
+
+/* the sign-in form inside the Account card */
+.accform { display: flex; gap: var(--sp-2); align-items: center; padding: 0 0 var(--sp-3); }
+.accform .field { flex: 1; min-width: 0; }
+.accform .field.code { font: 600 var(--fs-title) var(--mono); letter-spacing: .32em; text-align: center; }
+.pillbtn:disabled { opacity: .55; cursor: default; filter: none; }
+.accform[hidden] { display: none; }
+.setrow:has(+ [hidden]) { border-bottom: 0; }

@@ -1,0 +1,38 @@
+/* What the web page changes about the island's own CSS: the island is a floating window, here it is a card in the middle of a page. */
+:root { --page: #000; }
+:root[data-theme="light"] { --page: #d3d8e6; }
+html, body { height: auto; min-height: 100%; overflow: auto; background: var(--page); user-select: text; }
+body { padding: 24px 12px 48px; }
+#pill { position: relative; top: auto; left: auto; transform: none; width: min(480px, 100%); height: auto !important; margin: 0 auto; }
+#content { position: relative; width: auto; }
+#tabs { gap: 10px; }
+#who { margin-left: auto; font-size: var(--fs-meta); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+#signOut { flex: none; margin-bottom: -1px; }
+#signOut[hidden], #who:empty { display: none; }
+#signOut { margin-left: 0; }
+#tabs:has(#who:empty) #signOut { margin-left: auto; }
+#aTag { font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--text-4); }
+
+/* the sign-in card: the balance card's shape, with the form where the amount is */
+#authCard { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4) var(--sp-2) var(--sp-2); min-height: 112px; }
+#authCard #aBlob { flex: none; width: 96px; height: 96px; }
+#authCard #aBlob svg { pointer-events: none; }
+#authCard .mi { flex: 1; }
+#authCard .accform { padding: var(--sp-2) 0 0; }
+#authCard .accform .field { margin: 0; }
+#authCard .link { align-self: flex-start; margin-top: 2px; }
+#authHint.err, #mIO.err { color: var(--danger); }
+
+/* the amount turns into a field in place */
+#mBalance { cursor: text; border-radius: var(--r-1); }
+#mBalance:hover { color: var(--accent); }
+#mBalance:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 2px; }
+.medit { width: 100%; max-width: 170px; background: transparent; border: 0; border-bottom: 1.5px solid var(--accent); color: var(--text-hi); outline: 0; padding: 0;
+  font: 700 28px/1.1 var(--font); letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.medit[hidden] { display: none; }
+#mBal .mi { min-width: 0; }
+
+@media (max-width: 420px) {
+  #mBal .mi b, .medit { font-size: 24px; }
+  #mBal { padding-right: var(--sp-3); }
+}

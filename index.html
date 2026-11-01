@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Island Money</title>
+<script src="theme.js"></script>
+<link rel="stylesheet" href="island.css">
+<link rel="stylesheet" href="web.css">
+</head>
+<body>
+<!-- The island's own look, copied from ../ui: its tokens (island.css, theme.js), its icons, its blob (bloub/) and its notched cards (notch.js). -->
+<div id="pill" class="open">
+  <div id="content">
+    <nav id="tabs">
+      <span id="tabInd"></span>
+      <button class="on" type="button">Money</button>
+      <span id="who"></span>
+      <button id="signOut" class="link" type="button" hidden>Sign out</button>
+    </nav>
+
+    <!-- sign in: your email, then the one-time code that is emailed to you (the same account as the island) -->
+    <section class="view" id="v-auth">
+      <div class="bar top"><span class="label">Account</span><span id="aTag">Sign in</span></div>
+      <div id="authCard" class="notch">
+        <i data-ic="wallet"></i>
+        <div id="aBlob"></div>
+        <form id="authForm" class="mi" autocomplete="on">
+          <span class="k" id="authK">Your email</span>
+          <small id="authHint">We will email you a one-time code.</small>
+          <div class="accform">
+            <input id="authIn" class="field" type="email" required maxlength="254" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email">
+            <button id="authGo" class="pillbtn primary" type="submit">Send code</button>
+          </div>
+          <button id="authBack" class="link" type="button" hidden>Use another email</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- the balance: the island's Money card; click the amount to change it -->
+    <section class="view" id="v-money">
+      <div class="bar top"><span class="label">Balance</span><span id="mTag">Live</span></div>
+      <div id="mBal" class="notch">
+        <i data-ic="wallet"></i>
+        <div id="mBlob"></div>
+        <div class="mi">
+          <span class="k">Balance</span>
+          <b id="mBalance" tabindex="0" role="button" title="Click to change">-</b>
+          <input id="mEdit" class="medit" type="text" inputmode="decimal" maxlength="16" aria-label="Balance" hidden>
+          <small id="mIO">Click the amount to change it</small>
+        </div>
+        <div class="mg">
+          <span id="mbNote"></span>
+          <svg id="mbChart" viewBox="0 0 170 60" preserveAspectRatio="xMaxYMid meet">
+            <defs>
+              <linearGradient id="mbgLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--accent-2)"/></linearGradient>
+              <linearGradient id="mbgArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--accent);stop-opacity:.28"/><stop offset="1" style="stop-color:var(--accent);stop-opacity:0"/></linearGradient>
+            </defs>
+            <path id="mbArea" fill="url(#mbgArea)"/>
+            <path id="mbLine" fill="none" stroke="url(#mbgLine)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <line id="mbCross" y1="2" y2="58"/>
+            <circle id="mbHalo" r="8"/>
+            <circle id="mbDot" r="3.8"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="icons.js"></script>
+<script src="notch.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
