@@ -59,7 +59,7 @@ const blobRuns = () => { if (mb) { if (tab === 'money' && !document.hidden) mb.s
 document.addEventListener('visibilitychange', blobRuns);
 
 // ---- the island's entrance: things rise in turn, the blob pops in, the number counts up, the line draws itself
-const rise = (els, delay = 0, gap = 55) => { if (!reduced) els.forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 560, delay: delay + i * gap, easing: RISE, fill: 'backwards' })); };
+const rise = (els, delay = 0, gap = 55) => { if (!reduced) els.filter(Boolean).forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 560, delay: delay + i * gap, easing: RISE, fill: 'backwards' })); };
 const blobEntrance = (host) => host.animate([{ opacity: 0, transform: 'translateY(22px) scale(.55)' }, { opacity: 1, transform: 'translateY(-4px) scale(1.07)', offset: .62 }, { opacity: 1, transform: 'none' }], { duration: 680, easing: RISE });
 function countUp(el, to, dur = 1000, delay = 0, from = 0) {
   cancelAnimationFrame(el._raf);
@@ -90,7 +90,7 @@ function enter(view, withNotch = false) {
     if (mb) blobEntrance($('mBlob'));
     countUp($('mBalance'), data.balance, 1000, 200); drawIn();
   } else if (view === 'goals') { goalsIntro = true; renderGoals(); }   // the cards rise in (and spring open) as they are drawn
-  else if (view === 'wealth') rise([$('nwCard'), $('invCard'), $('projCard')], 30, 80);
+  else if (view === 'wealth') rise([$('nwCard'), $('invCard')], 30, 80);
   else rise([...document.querySelectorAll('#v-settings .group')], 30, 70);
 }
 
