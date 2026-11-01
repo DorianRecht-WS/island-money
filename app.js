@@ -439,6 +439,7 @@ function openAssetForm(a) {
   $('asInvested').value = a ? String(a.invested) : ''; $('asValue').value = a ? String(a.value) : '';
   $('asSince').value = a ? a.since : ymd(new Date());
   $('asErr').textContent = ''; $('asCancel').textContent = a ? 'Delete' : 'Cancel';
+  $('asChips').hidden = !!a;   // quick names only when adding
   $('asName').focus();
 }
 function closeAssetForm() { editingAsset = null; $('assetForm').hidden = true; $('assetAdd').textContent = 'Add'; }
@@ -446,6 +447,7 @@ $('mNw').addEventListener('click', () => showTab('wealth'));
 $('assetAdd').addEventListener('click', () => { if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; } $('assetForm').hidden ? openAssetForm(null) : closeAssetForm(); });
 $('assetList').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); if (li && user) openAssetForm(assets.find((a) => a.id === li.dataset.id)); });
 $('assetList').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const li = e.target.closest('li[data-id]'); if (li && user) openAssetForm(assets.find((a) => a.id === li.dataset.id)); } });
+$('asChips').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $('asName').value = b.dataset.n; $('asKind').value = b.dataset.k; $('asKind').dispatchEvent(new Event('change')); $('asValue').focus(); });
 $('asKind').addEventListener('change', () => { $('asInvested').placeholder = $('asKind').value === 'investment' ? 'Put in (€)' : 'Put in (optional)'; });
 $('assetForm').addEventListener('submit', async (e) => {
   e.preventDefault();

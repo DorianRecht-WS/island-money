@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=13">
+<link rel="stylesheet" href="web.css?v=14">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -101,6 +101,9 @@
           </div>
           <ul id="assetList" class="alist"></ul>
           <form id="assetForm" class="aform" hidden autocomplete="off">
+            <div class="chips wide" id="asChips">
+              <button type="button" data-n="Livret A" data-k="savings">Livret A</button><button type="button" data-n="Livret Jeune" data-k="savings">Livret Jeune</button><button type="button" data-n="LDDS" data-k="savings">LDDS</button><button type="button" data-n="PEA" data-k="investment">PEA</button><button type="button" data-n="Assurance vie" data-k="investment">Assurance vie</button><button type="button" data-n="Crypto" data-k="investment">Crypto</button>
+            </div>
             <input class="field wide" id="asName" placeholder="Name (e.g. PEA, Livret A, Flat)" maxlength="60" aria-label="Name" required>
             <select class="field" id="asKind" aria-label="Type"><option value="investment">Investment</option><option value="savings">Savings</option><option value="property">Property</option><option value="debt">Debt</option></select>
             <input class="field" id="asSince" type="date" aria-label="Since">
@@ -181,6 +184,6 @@
 <script defer src="icons.js"></script>
 <script defer src="notch.js?v=5"></script>
 <script defer src="wealth.js?v=1"></script>
-<script defer src="app.js?v=16"></script>
+<script defer src="app.js?v=17"></script>
 </body>
 </html>
