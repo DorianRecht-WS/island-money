@@ -43,15 +43,16 @@ function paintBlob() {
   const cs = getComputedStyle(document.documentElement);
   blobCall((b) => b.setColors(cs.getPropertyValue('--blob-ink').trim(), cs.getPropertyValue('--bg').trim()));
 }
-import('./bloub/view.js').then(({ createBlob }) => {
+const loadBlob = (tries = 3) => import('./bloub/view.js').then(({ createBlob }) => {
   mb = createBlob($('mBlob'), { color: 'creme', paper: '#000000', facing: 'right' });
-  paintBlob(); mb.start(); mb.setExpression('money');
+  paintBlob(); mb.start(); mb.setExpression('money'); mb.look(null);
   window.islandTheme.onChange(paintBlob);
   document.addEventListener('mousemove', (e) => mb.look(e.clientX, e.clientY));
   document.addEventListener('mouseleave', () => mb.look(null));
   $('mBlob').addEventListener('click', () => mb.play('wink', 1.2));   // a tap on it winks
   if (!reduced && tab === 'money') blobEntrance($('mBlob'));
-}).catch(() => { /* no blob: the numbers still work */ });
+}).catch((e) => { console.error('blob', e); if (tries > 1) setTimeout(() => loadBlob(tries - 1), 1500); });   // no blob: the numbers still work
+loadBlob();
 
 // ---- the island's entrance: things rise in turn, the blob pops in, the number counts up, the line draws itself
 const rise = (els, delay = 0, gap = 55) => { if (!reduced) els.forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 560, delay: delay + i * gap, easing: RISE, fill: 'backwards' })); };
@@ -307,7 +308,6 @@ function onSession(session) {
   const next = session ? session.user : null;
   const changed = (next && next.id) !== (user && user.id) || pending;
   user = next; pending = false;
-  $('who').textContent = user ? user.email || '' : '';
   renderAccount();
   if (!changed) return;
   if (user) {
@@ -319,12 +319,76 @@ function onSession(session) {
   }
 }
 
+// ---- settings: install the app (Chrome offers a prompt; iPhones only have Share > Add to Home Screen)
+let installEv = null;
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+function renderInstall() {
+  const show = !standalone && (installEv || ios);
+  $('appGroup').hidden = !show;
+  $('appBtn').hidden = !installEv;
+  if (show && !installEv) $('appSmall').textContent = 'Tap Share, then Add to Home Screen';
+}
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEv = e; renderInstall(); });
+window.addEventListener('appinstalled', () => { installEv = null; renderInstall(); });
+$('appBtn').addEventListener('click', async () => { if (!installEv) return; installEv.prompt(); await installEv.userChoice.catch(() => {}); installEv = null; renderInstall(); });
+renderInstall();
+
+// ---- pull down to reload: start a downward swipe in the upper half of the screen (with the page scrolled to the top) and let go
+const PTR_AT = 64;   // how far to pull (px, after resistance) before letting go reloads
+const ptr = $('ptr'), views = $('views');
+let pull = null;
+const ptrSet = (p, snap) => {
+  const y = Math.min(p, 120);
+  ptr.style.transition = snap ? 'transform .38s cubic-bezier(.3, 1.35, .45, 1), opacity .2s' : 'none';
+  ptr.style.opacity = Math.min(1, p / 36).toFixed(2);
+  ptr.style.transform = `translate(-50%, ${(y - 56).toFixed(1)}px) rotate(${(p * 4).toFixed(0)}deg) scale(${(0.6 + Math.min(1, p / PTR_AT) * 0.4).toFixed(2)})`;
+  views.style.transition = snap ? 'transform .38s cubic-bezier(.3, 1.35, .45, 1)' : 'none';
+  views.style.transform = p > 0 ? `translateY(${(y * 0.55).toFixed(1)}px)` : '';
+};
+const content = $('content');
+content.addEventListener('touchstart', (e) => {
+  const t = e.touches[0];
+  pull = !editing && e.touches.length === 1 && t.clientY < window.innerHeight * 0.5 && views.scrollTop <= 0 ? { x: t.clientX, y: t.clientY, p: 0, on: false } : null;
+}, { passive: true });
+content.addEventListener('touchmove', (e) => {
+  if (!pull) return;
+  const t = e.touches[0], dx = t.clientX - pull.x, dy = t.clientY - pull.y;
+  if (!pull.on) {
+    if (Math.abs(dx) > Math.abs(dy) || dy < -6) { pull = null; return; }   // sideways or upward: not a pull
+    if (dy < 8) return;
+    pull.on = true;
+  }
+  if (e.cancelable) e.preventDefault();
+  pull.p = Math.max(0, (dy - 8) * 0.55);
+  ptr.classList.remove('spin');
+  ptrSet(pull.p, false);
+}, { passive: false });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function reloadNow() {
+  const before = data.balance;
+  mood('curieux');
+  const wait = sleep(700);   // the spinner shows long enough to be seen
+  if (user) { lastLoad = Date.now(); await load(false); }
+  await wait;
+  ptr.classList.remove('spin'); ptrSet(0, true);
+  if (user && tab === 'money') { countUp($('mBalance'), data.balance, 800, 0, before); drawIn(); mood('heureux', 'money', 1400); if (mb && !reduced) blobEntrance($('mBlob')); }
+  else mood('money');
+}
+function endPull() {
+  const p = pull; pull = null;
+  if (!p || !p.on) return;
+  if (p.p >= PTR_AT) { ptr.classList.add('spin'); ptrSet(PTR_AT * 0.8, true); reloadNow(); }
+  else ptrSet(0, true);
+}
+content.addEventListener('touchend', endPull, { passive: true });
+content.addEventListener('touchcancel', endPull, { passive: true });
+
 // ---- start: draw what we know right away (the last balance on this device), then ask for the real one
 (() => {
   const c = store.get();
   if (c && c.uid) {
     data = { accounts: c.accounts, balance: c.balance, history: c.history, thin: c.thin, fromCache: true, loaded: true };
-    $('who').textContent = c.email || '';
     $('mBalance').textContent = eur(c.balance);
     say(c.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
     $('mTag').textContent = ''; document.body.classList.remove('loading');

@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=5">
+<link rel="stylesheet" href="web.css?v=8">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -36,7 +36,9 @@
      On a phone this is the whole screen, with the tabs at the bottom like an app; on a computer it is the island panel in the middle of the page. -->
 <div id="pill" class="open">
   <div id="content">
-    <header id="appbar"><b>Island Money</b><span id="who"></span></header>
+    <header id="appbar"><b>Island Money</b></header>
+    <!-- pull down from the upper half of the screen to reload the balance -->
+    <div id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></div>
 
     <main id="views">
       <!-- the balance: the island's Money card; click the amount to change it -->
@@ -91,7 +93,11 @@
           <div class="setrow"><span>Theme</span><div class="seg" id="setTheme"><button data-v="dark" type="button">Dark</button><button data-v="light" type="button">Light</button><button data-v="auto" type="button">Auto</button></div></div>
           <div class="setrow"><span>Palette</span><div class="swatches" id="setPalette"></div></div>
         </div>
-        <div class="bar foot"><span>Island Money 0.1</span><span id="setInstall"></span></div>
+        <div class="group" id="appGroup" hidden>
+          <span class="label">App</span>
+          <div class="setrow"><span>Add to your home screen<small id="appSmall">Opens full screen, like an app</small></span><button class="pillbtn primary" id="appBtn" type="button">Install</button></div>
+        </div>
+        <div class="bar foot"><span>Island Money 0.1</span></div>
       </section>
     </main>
 
@@ -106,6 +112,6 @@
 <script defer src="config.js"></script>
 <script defer src="icons.js"></script>
 <script defer src="notch.js?v=4"></script>
-<script defer src="app.js?v=4"></script>
+<script defer src="app.js?v=6"></script>
 </body>
 </html>

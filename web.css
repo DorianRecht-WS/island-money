@@ -4,7 +4,7 @@
 :root[data-theme="light"] { --page: #d3d8e6; }
 html { height: 100%; background: var(--page); -webkit-text-size-adjust: 100%; }
 /* fixed to the visible screen: a phone's address bar can no longer push the tab bar out of view */
-body { position: fixed; inset: 0; height: auto; overflow: hidden; background: var(--page); user-select: text; padding: 24px 12px; display: flex; justify-content: center; align-items: flex-start;
+body { position: fixed; inset: 0; height: auto; overflow: hidden; background: var(--page); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; padding: 24px 12px; display: flex; justify-content: center; align-items: flex-start;
   overscroll-behavior: none; touch-action: manipulation; }
 button, a, #dock { -webkit-tap-highlight-color: transparent; }
 
@@ -94,3 +94,36 @@ body.loading #mbNote.sk { min-width: 90px; min-height: 12px; }
 @media (max-width: 360px) { #mBal #mBlob { width: 84px; height: 84px; } #mBal .mi b, .medit { font-size: 28px; } }
 @media (max-height: 640px) { #mbChart { height: 100px; } #mBal { min-height: 116px; } }
 @media (display-mode: standalone) { body { padding-top: 0; padding-bottom: 0; } }
+
+/* ---- pull down to reload: a round accent chip that follows the finger, then spins while the balance loads ---- */
+#ptr { position: absolute; z-index: 6; left: 50%; top: calc(34px + env(safe-area-inset-top)); width: 40px; height: 40px; margin-left: 0; border-radius: 50%; display: grid; place-items: center; pointer-events: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: var(--on-accent); box-shadow: 0 6px 18px rgba(0, 0, 0, .35); opacity: 0; transform: translate(-50%, -56px); will-change: transform; }
+#ptr svg { width: 20px; height: 20px; }
+@keyframes ptrspin { to { transform: rotate(360deg); } }
+#ptr.spin svg { animation: ptrspin .8s linear infinite; }
+#views { will-change: transform; }
+
+/* ---- settings on a phone: big, one thing per line, easy to hit with a thumb ---- */
+@media (max-width: 560px) {
+  #v-settings { gap: var(--sp-3); }
+  #v-settings .group { padding: var(--sp-4) var(--sp-4) var(--sp-2); }
+  #v-settings .group .label { margin-bottom: var(--sp-2); }
+  .setrow { flex-wrap: wrap; row-gap: var(--sp-3); padding: var(--sp-3) 0; min-height: 56px; }
+  .setrow > span { font-size: 14px; min-width: 0; }
+  .setrow > span small { font-size: var(--fs-meta); white-space: normal; margin-top: 3px; }
+  /* account: the person, then one wide button under it */
+  #v-settings .setrow:has(#accBtn) { align-items: center; }
+  #accBtn, #appBtn { min-height: 44px; font-size: 14px; padding: 0 var(--sp-5, 20px); flex: 1 1 100%; order: 3; }
+  .av { width: 40px; height: 40px; font-size: 16px; }
+  .accform { flex-direction: column; align-items: stretch; padding-bottom: var(--sp-4); }
+  .accform .field { flex: none; width: 100%; min-height: 48px; }
+  .accform .pillbtn { min-height: 48px; font-size: 15px; }
+  /* appearance: a full-width switch and a spread-out row of palettes */
+  .setrow > .seg { display: flex; width: 100%; gap: var(--sp-2); }
+  .seg button { flex: 1; min-height: 44px; font-size: 14px; }
+  .setrow > .swatches { width: 100%; display: grid; grid-template-columns: repeat(6, 1fr); justify-items: center; }
+  .swatches button { width: 42px; height: 42px; }
+  #v-settings .bar.foot { padding: var(--sp-2) var(--sp-1) 0; }
+}
+
+input { user-select: text; -webkit-user-select: text; }
