@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css?v=4">
-<link rel="stylesheet" href="web.css?v=11">
+<link rel="stylesheet" href="web.css?v=12">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -74,6 +74,51 @@
         </div>
       </section>
 
+      <!-- wealth: net worth, investments with their returns, and a growth calculator -->
+      <section class="view" id="v-wealth">
+        <div class="bar top"><span class="label">Wealth</span><span id="wTag"></span></div>
+        <div id="nwCard" class="notch">
+          <i data-ic="coins"></i>
+          <span class="k">Net worth</span>
+          <b id="nwAmount">&euro;0</b>
+          <small id="nwNote">Your balance, investments, savings and property, minus debts</small>
+          <div id="nwBar" aria-hidden="true"></div>
+          <div id="nwLegend"></div>
+        </div>
+        <div id="invCard" class="notch">
+          <i data-ic="invest"></i>
+          <div class="ch"><span class="k">Investments &amp; more</span><button class="pillbtn" id="assetAdd" type="button">Add</button></div>
+          <div id="invStats" class="stats">
+            <div><span class="k">Put in</span><b id="stIn">&euro;0</b></div>
+            <div><span class="k">Worth now</span><b id="stNow">&euro;0</b></div>
+            <div><span class="k" id="stGainK">Gain</span><b id="stGain">&euro;0</b></div>
+          </div>
+          <ul id="assetList" class="alist"></ul>
+          <form id="assetForm" class="aform" hidden autocomplete="off">
+            <input class="field wide" id="asName" placeholder="Name (e.g. PEA, Livret A, Flat)" maxlength="60" aria-label="Name" required>
+            <select class="field" id="asKind" aria-label="Type"><option value="investment">Investment</option><option value="savings">Savings</option><option value="property">Property</option><option value="debt">Debt</option></select>
+            <input class="field" id="asSince" type="date" aria-label="Since">
+            <input class="field" id="asInvested" inputmode="decimal" placeholder="Put in (&euro;)" maxlength="14" aria-label="Amount put in">
+            <input class="field" id="asValue" inputmode="decimal" placeholder="Worth now (&euro;)" maxlength="14" aria-label="Worth now" required>
+            <button class="pillbtn primary" id="asSave" type="submit">Save</button>
+            <button class="pillbtn" id="asCancel" type="button">Cancel</button>
+            <p class="err wide" id="asErr" role="alert"></p>
+          </form>
+        </div>
+        <div id="projCard" class="notch">
+          <i data-ic="trend"></i>
+          <div class="ch"><span class="k">If you keep saving</span></div>
+          <div class="pin">
+            <label>Per month<input class="field" id="pjMonthly" inputmode="decimal" maxlength="9" aria-label="Saved per month in euros"></label>
+            <label>Return / year %<input class="field" id="pjRate" inputmode="decimal" maxlength="5" aria-label="Return per year in percent"></label>
+            <label>Years<input class="field" id="pjYears" inputmode="numeric" maxlength="2" aria-label="Number of years"></label>
+          </div>
+          <div class="pres"><b id="pjTotal">&euro;0</b><small id="pjSub"></small></div>
+          <svg id="pjChart" role="img" aria-label="Projected growth"></svg>
+          <small class="fine">An estimate, not a promise: real markets go up and down.</small>
+        </div>
+      </section>
+
       <!-- settings, as in the island: the account (sign in with an emailed code), then how it looks -->
       <section class="view" id="v-settings">
         <div class="group notch">
@@ -120,6 +165,7 @@
     <nav id="dock" aria-label="Tabs">
       <span id="dockInd"></span>
       <button type="button" data-t="money" class="on"><i data-ic="wallet"></i><span>Money</span></button>
+      <button type="button" data-t="wealth"><i data-ic="invest"></i><span>Wealth</span></button>
       <button type="button" data-t="settings"><i data-ic="gear"></i><span>Settings</span></button>
     </nav>
   </div>
@@ -128,6 +174,7 @@
 <script defer src="config.js"></script>
 <script defer src="icons.js"></script>
 <script defer src="notch.js?v=5"></script>
-<script defer src="app.js?v=13"></script>
+<script defer src="wealth.js?v=1"></script>
+<script defer src="app.js?v=15"></script>
 </body>
 </html>
