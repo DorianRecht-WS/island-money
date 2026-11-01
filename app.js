@@ -717,7 +717,11 @@ function renderGoals() {
   $('goalList').innerHTML = goals.map((g, i) => {
     const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.behind ? 'behind' : v.state === 'On track' ? 'ontrack' : '';
     const bar = `<div class="pbar ${v.done ? '' : v.behind ? 'warn' : ''}"><i style="width:${pct}%"></i></div>`;
-    return `<li class="gtile${goalFlipped.has(g.id) ? ' flip' : ''}" data-id="${esc(g.id)}" tabindex="0" role="button" aria-pressed="${goalFlipped.has(g.id)}">
+    // the chip in the notch: a tick once the goal is reached, otherwise a ring that fills as the goal does
+    const chip = v.done ? '<path d="M6.5 12.5l3.8 3.8 7.2-8.1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
+      : `<circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-opacity=".3" stroke-width="2.4"/><circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="${Math.max(pct, 3)} 100" transform="rotate(-90 12 12)"/>`;
+    return `<li class="gtile notch${goalFlipped.has(g.id) ? ' flip' : ''}" style="--chip:${v.done ? 'var(--ok)' : GOAL_HUES[i % GOAL_HUES.length]}" data-id="${esc(g.id)}" tabindex="0" role="button" aria-pressed="${goalFlipped.has(g.id)}">
+      <i><svg viewBox="0 0 24 24" fill="none">${chip}</svg></i>
       <div class="gin">
         <div class="gface gfront">
           <div class="gh"><i style="background:${GOAL_HUES[i % GOAL_HUES.length]}"></i><b>${esc(v.title)}</b><span class="gstate ${tone}">${esc(v.state)}</span></div>
@@ -732,6 +736,7 @@ function renderGoals() {
       </div>
     </li>`;
   }).join('') || `<li class="empty">${user ? (goalsReady ? 'Tap the + to add something you are saving for.' : 'Needs the database update.') : 'Sign in to add your goals.'}</li>`;
+  for (const li of $('goalList').querySelectorAll('li.notch')) notchAttach(li);
 }
 
 // ---- the add / edit sheet
