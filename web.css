@@ -1,27 +1,31 @@
-/* What the web page changes about the island's own CSS: the island is a floating window, here it is a card in the middle of a page. */
+/* What the web page changes about the island's own CSS: the island is a floating window, here it is the app.
+   Phone: the whole screen, tabs at the bottom. Computer: the island panel, centred. */
 :root { --page: #000; }
 :root[data-theme="light"] { --page: #d3d8e6; }
-html, body { height: auto; min-height: 100%; overflow: auto; background: var(--page); user-select: text; }
-body { padding: 24px 12px 48px; }
-#pill { position: relative; top: auto; left: auto; transform: none; width: min(480px, 100%); height: auto !important; margin: 0 auto; }
-#content { position: relative; width: auto; }
-#tabs { gap: 10px; }
-#who { margin-left: auto; font-size: var(--fs-meta); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-#signOut { flex: none; margin-bottom: -1px; }
-#signOut[hidden], #who:empty { display: none; }
-#signOut { margin-left: 0; }
-#tabs:has(#who:empty) #signOut { margin-left: auto; }
-#aTag { font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--text-4); }
+html, body { height: 100%; overflow: hidden; background: var(--page); user-select: text; -webkit-text-size-adjust: 100%; }
+body { padding: 24px 12px; display: flex; justify-content: center; align-items: flex-start; }
+button, a, #dock { -webkit-tap-highlight-color: transparent; }
 
-/* the sign-in card: the balance card's shape, with the form where the amount is */
-#authCard { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4) var(--sp-2) var(--sp-2); min-height: 112px; }
-#authCard #aBlob { flex: none; width: 96px; height: 96px; }
-#authCard #aBlob svg { pointer-events: none; }
-#authCard .mi { flex: 1; }
-#authCard .accform { padding: var(--sp-2) 0 0; }
-#authCard .accform .field { margin: 0; }
-#authCard .link { align-self: flex-start; margin-top: 2px; }
-#authHint.err, #mIO.err { color: var(--danger); }
+#pill { position: relative; top: auto; left: auto; transform: none; width: min(480px, 100%); height: min(720px, 100%) !important; contain: layout paint; }
+#content { position: relative; width: auto; height: 100%; padding: 0; display: flex; flex-direction: column; }
+.view { min-height: 0; }
+
+#appbar { flex: none; display: flex; align-items: baseline; gap: var(--sp-3); padding: 16px var(--sp-4) 6px; }
+#appbar b { font-size: var(--fs-title); color: var(--text-hi); letter-spacing: -.01em; }
+#who { margin-left: auto; font-size: var(--fs-meta); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+#views { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--sp-2) var(--sp-4) var(--sp-4); }
+
+/* the tab bar at the bottom: the island's sliding indicator, on its top edge */
+#dock { position: relative; flex: none; display: flex; border-top: 1px solid var(--line); padding: 4px var(--sp-2) calc(6px + env(safe-area-inset-bottom)); background: var(--bg); }
+#dock > button { flex: 1; background: none; border: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0 4px;
+  color: var(--text-3); font-size: var(--fs-meta); transition: color .2s; }
+#dock > button:hover { color: var(--text-2); }
+#dock > button.on { color: var(--text-hi); }
+#dock > button i { display: block; width: 22px; height: 22px; }
+#dock > button svg { width: 22px; height: 22px; transition: color .2s, transform .42s var(--spring); }
+#dock > button.on svg { color: var(--accent); transform: translateY(-1px) scale(1.08); }
+#dockInd { position: absolute; left: 0; top: -1px; width: 0; height: 2px; border-radius: 2px; pointer-events: none;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: left .42s var(--spring), width .42s var(--spring), opacity .2s; }
 
 /* the amount turns into a field in place */
 #mBalance { cursor: text; border-radius: var(--r-1); }
@@ -31,8 +35,26 @@ body { padding: 24px 12px 48px; }
   font: 700 28px/1.1 var(--font); letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 2px; }
 .medit[hidden] { display: none; }
 #mBal .mi { min-width: 0; }
+body.out #mBal .mg { visibility: hidden; }
+#mIO.err, #accText small.err { color: var(--danger); }
+#mTag.live { color: var(--ok); }
 
-@media (max-width: 420px) {
-  #mBal .mi b, .medit { font-size: 24px; }
+/* settings: the island's groups, one under the other */
+#v-settings.on { display: flex; flex-direction: column; gap: var(--sp-2); }
+#v-settings .bar.foot { margin-top: var(--sp-2); }
+.accform { display: flex; gap: var(--sp-2); align-items: center; padding: 0 0 var(--sp-3); }
+.accform[hidden] { display: none; }
+.accform .field { flex: 1; min-width: 0; margin: 0; font-size: 16px; }   /* 16px: phones zoom into smaller fields */
+.accform .field.code { font: 600 var(--fs-code) var(--mono); letter-spacing: .32em; text-align: center; }
+.swatches button { width: 26px; height: 26px; }
+.seg button { padding: 4px var(--sp-3); }
+
+/* a phone: the app fills the screen, no panel */
+@media (max-width: 560px) {
+  body { padding: 0; }
+  #pill { width: 100%; height: 100% !important; border-radius: 0; box-shadow: none; border: 0; }
+  #appbar { padding-top: calc(14px + env(safe-area-inset-top)); }
+  #mBal .mi b, .medit { font-size: 26px; }
   #mBal { padding-right: var(--sp-3); }
 }
+@media (display-mode: standalone) { body { padding: 0; } #pill { width: min(480px, 100%); } }

@@ -30,17 +30,17 @@ function parseMoney(text) {
 
 // ---- the blobs (engine from github.com/jeremy-prt/bloub), drawn in the theme's ink on the island's colour
 const BLOB = { color: 'creme', paper: '#000000', facing: 'right' };
-const mb = createBlob($('mBlob'), BLOB), ab = createBlob($('aBlob'), BLOB);
+const mb = createBlob($('mBlob'), BLOB);
 function paintBlobs() {
   const cs = getComputedStyle(document.documentElement);
-  for (const b of [mb, ab]) b.setColors(cs.getPropertyValue('--blob-ink').trim(), cs.getPropertyValue('--bg').trim());
+  for (const b of [mb]) b.setColors(cs.getPropertyValue('--blob-ink').trim(), cs.getPropertyValue('--bg').trim());
 }
 paintBlobs();
 window.islandTheme.onChange(paintBlobs);
-mb.start(); ab.start();
-mb.setExpression('money'); ab.setExpression('neutre');
-document.addEventListener('mousemove', (e) => { mb.look(e.clientX, e.clientY); ab.look(e.clientX, e.clientY); });
-document.addEventListener('mouseleave', () => { mb.look(null); ab.look(null); });
+mb.start();
+mb.setExpression('money');
+document.addEventListener('mousemove', (e) => { mb.look(e.clientX, e.clientY); });
+document.addEventListener('mouseleave', () => mb.look(null));
 function mood(blob, expression, back, ms) { blob.setExpression(expression); if (back) setTimeout(() => blob.setExpression(back), ms); }
 
 // ---- the island's entrance: things rise in turn, the blob pops in, the number counts up, the line draws itself
@@ -65,10 +65,11 @@ function drawIn() {
   for (const id of ['mbDot', 'mbHalo']) $(id).animate([{ opacity: 0, transform: 'scale(.2)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 520, delay: 1500, easing: 'cubic-bezier(.2, 1.4, .3, 1)', fill: 'backwards' });
 }
 function enter(view) {
-  const host = view === 'money' ? $('mBal') : $('authCard');
-  rise([host], 30);
-  blobEntrance(view === 'money' ? $('mBlob') : $('aBlob'));
-  if (view === 'money') { countUp($('mBalance'), data.balance, 1000, 200); drawIn(); }
+  if (view === 'money') {
+    rise([$('mBal')], 30);
+    blobEntrance($('mBlob'));
+    countUp($('mBalance'), data.balance, 1000, 200); drawIn();
+  } else rise([...document.querySelectorAll('#v-settings .group')], 30, 70);
 }
 
 // ---- the balance line: the same plain 30-day line as the island's Money tab
@@ -103,40 +104,98 @@ $('mbChart').addEventListener('pointermove', (e) => {
 });
 $('mbChart').addEventListener('pointerleave', () => mark(data.history.length - 1, false));
 
-// ---- sign in
-let user = null, view = '', authStep = 'email', authEmail = '';
-function renderAuth(err = '') {
-  const code = authStep === 'code', inp = $('authIn');
-  inp.type = code ? 'text' : 'email'; inp.className = code ? 'field code' : 'field';
-  inp.placeholder = code ? '123456' : 'you@example.com'; inp.maxLength = code ? 10 : 254; inp.inputMode = code ? 'numeric' : 'email';
-  inp.autocomplete = code ? 'one-time-code' : 'email';
-  $('authK').textContent = code ? 'Check your email' : 'Your email';
-  $('authHint').textContent = err || (code ? `Code sent to ${authEmail}` : 'We will email you a one-time code.');
-  $('authHint').classList.toggle('err', !!err);
-  $('authGo').textContent = code ? 'Verify' : 'Send code';
-  $('authBack').hidden = !code;
-  $('aTag').textContent = code ? 'Enter the code' : 'Sign in';
+
+// ---- the tabs: the bottom bar, with the island's sliding indicator
+const TABS = ['money', 'settings'];
+let tab = '', user = null, editing = false;
+function moveInd() {
+  const ind = $('dockInd'), b = document.querySelector('#dock > button.on');
+  if (b) { ind.style.left = b.offsetLeft + 'px'; ind.style.width = b.offsetWidth + 'px'; }
 }
-$('authForm').addEventListener('submit', async (e) => {
+function showTab(t) {
+  if (t === tab) return;
+  const first = !tab;
+  document.documentElement.style.setProperty('--tab-dx', (TABS.indexOf(t) > TABS.indexOf(tab) ? 18 : -18) + 'px');
+  tab = t;
+  for (const b of document.querySelectorAll('#dock button')) b.classList.toggle('on', b.dataset.t === t);
+  for (const v of document.querySelectorAll('.view')) v.classList.toggle('on', v.id === 'v-' + t);
+  moveInd();
+  if (!first) { enter(t); if (t === 'money' && user) refresh(); }
+}
+$('dock').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) showTab(b.dataset.t); });
+new ResizeObserver(moveInd).observe($('dock'));
+document.fonts && document.fonts.ready.then(moveInd);
+
+// ---- settings: how it looks (the island's own theme and palette code)
+const themeButtons = [...document.querySelectorAll('#setTheme button')];
+function renderLook() {
+  const st = window.islandTheme.get();
+  for (const b of themeButtons) b.classList.toggle('on', b.dataset.v === st.theme);
+  for (const b of document.querySelectorAll('#setPalette button')) b.classList.toggle('on', b.dataset.v === st.palette);
+  const meta = document.querySelector('meta[name=theme-color]');
+  if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#08080d';   // the phone's status bar follows
+}
+$('setPalette').innerHTML = Object.entries(window.islandTheme.palettes).map(([k, p]) => `<button data-v="${k}" type="button" title="${p.name}" aria-label="${p.name}" style="--a:${p.a[0]};--b:${p.b[0]}"></button>`).join('');
+$('setTheme').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) { window.islandTheme.set({ theme: b.dataset.v }); renderLook(); } });
+$('setPalette').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) { window.islandTheme.set({ palette: b.dataset.v }); renderLook(); mood(mb, 'heureux', 'money', 1200); } });
+window.islandTheme.onChange(renderLook);
+renderLook();
+
+// ---- settings: the account. Signing in is your email, then the one-time code that is emailed to you ('idle' | 'email' | 'code')
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let accStep = 'idle', accEmail = '', accErr = '', accBusy = false;
+function accSet(step, err = '') { accStep = step; accErr = err; renderAccount(); if (step !== 'idle') setTimeout(() => $('accIn').focus(), 60); }
+function renderAccount() {
+  const signedIn = !!user, inp = $('accIn');
+  if (signedIn && accStep !== 'idle') accStep = 'idle';
+  $('accAv').hidden = !signedIn;
+  if (signedIn) $('accAv').textContent = ((user.email || '?')[0] || '?').toUpperCase();
+  $('accForm').hidden = signedIn || accStep === 'idle';
+  $('accBtn').classList.toggle('primary', !signedIn && accStep === 'idle');
+  $('accGo').disabled = accBusy;
+  const small = (text, bad) => `<small${bad ? ' class="err"' : ''}>${esc(text)}</small>`;
+  if (signedIn) {
+    $('accText').innerHTML = `${esc(user.email || 'Signed in')}${small('Connected · same balance as the island')}`;
+    $('accBtn').textContent = 'Sign out';
+  } else if (accStep === 'email') {
+    $('accText').innerHTML = `Sign in with your email${small(accErr || 'We will email you a one-time code', !!accErr)}`;
+    $('accBtn').textContent = 'Cancel';
+    inp.type = 'email'; inp.placeholder = 'you@example.com'; inp.className = 'field'; inp.maxLength = 254; inp.inputMode = 'email'; inp.autocomplete = 'email';
+    $('accGo').textContent = accBusy ? 'Sending' : 'Send code';
+  } else if (accStep === 'code') {
+    $('accText').innerHTML = `Check your email${small(accErr || `Code sent to ${accEmail}`, !!accErr)}`;
+    $('accBtn').textContent = 'Back';
+    inp.type = 'text'; inp.placeholder = '123456'; inp.className = 'field code'; inp.maxLength = 10; inp.inputMode = 'numeric'; inp.autocomplete = 'one-time-code';
+    $('accGo').textContent = accBusy ? 'Checking' : 'Verify';
+  } else {
+    $('accText').innerHTML = `Not signed in${small('Sign in to see and change your balance')}`;
+    $('accBtn').textContent = 'Sign in';
+  }
+}
+$('accBtn').addEventListener('click', () => {
+  if (user) sb.auth.signOut();
+  else if (accStep === 'idle') { $('accIn').value = ''; accSet('email'); }
+  else if (accStep === 'code') { $('accIn').value = accEmail; accSet('email'); }
+  else { $('accIn').value = ''; accSet('idle'); }
+});
+$('accForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const value = $('authIn').value.trim();
+  if (accBusy) return;
+  const value = $('accIn').value.trim();
   if (!value) return;
-  $('authGo').disabled = true;
+  accBusy = true; accErr = ''; renderAccount();
   try {
-    if (authStep === 'email') {
+    if (accStep === 'email') {
       const { error } = await sb.auth.signInWithOtp({ email: value, options: { shouldCreateUser: true } });
       if (error) throw error;
-      authEmail = value.toLowerCase(); authStep = 'code'; $('authIn').value = ''; renderAuth(); mood(ab, 'curieux');
+      accEmail = value.toLowerCase(); $('accIn').value = ''; accBusy = false; accSet('code');
     } else {
-      const { error } = await sb.auth.verifyOtp({ email: authEmail, token: value, type: 'email' });
-      if (error) throw error;   // success: the auth listener below shows the balance
+      const { error } = await sb.auth.verifyOtp({ email: accEmail, token: value, type: 'email' });
+      if (error) throw error;   // success: the session listener below turns the page to "signed in"
+      accBusy = false; $('accIn').value = ''; accSet('idle');
     }
-  } catch (err) { renderAuth(fail(err)); mood(ab, 'surpris', 'curieux', 1500); }
-  $('authGo').disabled = false;
-  $('authIn').focus();
+  } catch (err) { accBusy = false; accSet(accStep, fail(err)); }
 });
-$('authBack').addEventListener('click', () => { authStep = 'email'; $('authIn').value = authEmail; renderAuth(); mood(ab, 'neutre'); $('authIn').focus(); });
-$('signOut').addEventListener('click', () => sb.auth.signOut());
 
 // ---- the balance: the total is the last day of balance_history, which the database keeps up to date
 async function load(animate) {
@@ -151,16 +210,30 @@ async function load(animate) {
   data.thin = history.length < 2 || history.every((v) => v === history[0]);
   render(animate);
 }
+// the app comes back to the front: fetch again, so a change made on another device shows (at most once every 3 s)
+let lastLoad = 0;
+function refresh() {
+  if (!user || editing || Date.now() - lastLoad < 3000) return;
+  lastLoad = Date.now();
+  load(false).then(() => { if (tab === 'money') countUp($('mBalance'), data.balance, 600, 0); });
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && tab === 'money') refresh(); });
+window.addEventListener('focus', () => { if (tab === 'money') refresh(); });
+
 function say(text, bad) { $('mIO').textContent = text; $('mIO').classList.toggle('err', !!bad); }
 function render(animate) {
+  document.body.classList.toggle('out', !user);
+  $('mTag').textContent = user ? 'Live' : 'Signed out'; $('mTag').classList.toggle('live', !!user);
+  $('mBalance').title = user ? 'Click to change' : 'Sign in';
+  if (!user) { $('mBalance').textContent = '€-'; say('Tap here to sign in'); return; }
   if (!animate) $('mBalance').textContent = eur(data.balance);
   say(data.accounts ? 'Click the amount to change it' : 'Click the amount to set your balance');
   drawChart();
-  if (animate) { enter('money'); }
+  if (animate && tab === 'money') enter('money');
 }
 // click the amount to change it: Enter saves, Escape cancels
-let editing = false;
 function startEdit() {
+  if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; }
   if (editing) return;
   editing = true;
   const inp = $('mEdit');
@@ -191,6 +264,7 @@ async function saveEdit() {
   drawIn();
 }
 $('mBalance').addEventListener('click', startEdit);
+$('mIO').addEventListener('click', () => { if (!user) startEdit(); });
 $('mBalance').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(); } });
 $('mEdit').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
@@ -198,33 +272,20 @@ $('mEdit').addEventListener('keydown', (e) => {
 });
 $('mEdit').addEventListener('blur', () => { if (editing) saveEdit(); });
 
-// ---- which screen
-function showView(v) {
-  if (v === view) return;
-  view = v;
-  $('v-auth').classList.toggle('on', v === 'auth');
-  $('v-money').classList.toggle('on', v === 'money');
-  $('signOut').hidden = v !== 'money';
-  moveInd();
-}
-function moveInd() {
-  const ind = $('tabInd'), b = document.querySelector('#tabs > button.on');
-  ind.style.left = b.offsetLeft + 'px'; ind.style.width = b.offsetWidth + 'px';
-}
+// ---- who is signed in
 function onSession(session) {
   const next = session ? session.user : null;
   const changed = (next && next.id) !== (user && user.id);
   user = next;
   $('who').textContent = user ? user.email || '' : '';
-  if (user) {
-    showView('money');
-    if (changed) setTimeout(() => load(true), 0);   // not inside the auth callback: it holds the auth lock
-  } else {
-    data = { balance: 0, history: [0, 0], accounts: 0, thin: true };
-    authStep = 'email'; renderAuth(); showView('auth'); enter('auth');
-  }
+  renderAccount();
+  if (!changed) return;
+  if (user) { showTab('money'); setTimeout(() => load(true), 0); }   // not inside the auth callback: it holds the auth lock
+  else { data = { balance: 0, history: [0, 0], accounts: 0, thin: true }; accStep = 'idle'; renderAccount(); render(false); }
 }
-renderAuth();
-document.fonts && document.fonts.ready.then(moveInd);
+renderAccount();
+showTab('money');
+render(false);
 sb.auth.onAuthStateChange((_event, session) => onSession(session));
 sb.auth.getSession().then(({ data: d }) => onSession(d.session));
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { /* the app works without it */ });

@@ -2,69 +2,85 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Island Money</title>
+<meta name="theme-color" content="#08080d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Island Money">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="theme.js"></script>
 <link rel="stylesheet" href="island.css">
 <link rel="stylesheet" href="web.css">
 </head>
 <body>
-<!-- The island's own look, copied from ../ui: its tokens (island.css, theme.js), its icons, its blob (bloub/) and its notched cards (notch.js). -->
+<!-- The island's own look, copied from ../ui: its tokens (island.css, theme.js), icons, blob (bloub/) and notched cards (notch.js).
+     On a phone this is the whole screen, with the tabs at the bottom like an app; on a computer it is the island panel in the middle of the page. -->
 <div id="pill" class="open">
   <div id="content">
-    <nav id="tabs">
-      <span id="tabInd"></span>
-      <button class="on" type="button">Money</button>
-      <span id="who"></span>
-      <button id="signOut" class="link" type="button" hidden>Sign out</button>
-    </nav>
+    <header id="appbar"><b>Island Money</b><span id="who"></span></header>
 
-    <!-- sign in: your email, then the one-time code that is emailed to you (the same account as the island) -->
-    <section class="view" id="v-auth">
-      <div class="bar top"><span class="label">Account</span><span id="aTag">Sign in</span></div>
-      <div id="authCard" class="notch">
-        <i data-ic="wallet"></i>
-        <div id="aBlob"></div>
-        <form id="authForm" class="mi" autocomplete="on">
-          <span class="k" id="authK">Your email</span>
-          <small id="authHint">We will email you a one-time code.</small>
-          <div class="accform">
-            <input id="authIn" class="field" type="email" required maxlength="254" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email">
-            <button id="authGo" class="pillbtn primary" type="submit">Send code</button>
+    <main id="views">
+      <!-- the balance: the island's Money card; click the amount to change it -->
+      <section class="view on" id="v-money">
+        <div class="bar top"><span class="label">Balance</span><span id="mTag">Signed out</span></div>
+        <div id="mBal" class="notch">
+          <i data-ic="wallet"></i>
+          <div id="mBlob"></div>
+          <div class="mi">
+            <span class="k">Balance</span>
+            <b id="mBalance" tabindex="0" role="button" title="Click to change">-</b>
+            <input id="mEdit" class="medit" type="text" inputmode="decimal" maxlength="16" aria-label="Balance" hidden>
+            <small id="mIO">Click the amount to change it</small>
           </div>
-          <button id="authBack" class="link" type="button" hidden>Use another email</button>
-        </form>
-      </div>
-    </section>
+          <div class="mg">
+            <span id="mbNote"></span>
+            <svg id="mbChart" viewBox="0 0 170 60" preserveAspectRatio="xMaxYMid meet">
+              <defs>
+                <linearGradient id="mbgLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--accent-2)"/></linearGradient>
+                <linearGradient id="mbgArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--accent);stop-opacity:.28"/><stop offset="1" style="stop-color:var(--accent);stop-opacity:0"/></linearGradient>
+              </defs>
+              <path id="mbArea" fill="url(#mbgArea)"/>
+              <path id="mbLine" fill="none" stroke="url(#mbgLine)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <line id="mbCross" y1="2" y2="58"/>
+              <circle id="mbHalo" r="8"/>
+              <circle id="mbDot" r="3.8"/>
+            </svg>
+          </div>
+        </div>
+      </section>
 
-    <!-- the balance: the island's Money card; click the amount to change it -->
-    <section class="view" id="v-money">
-      <div class="bar top"><span class="label">Balance</span><span id="mTag">Live</span></div>
-      <div id="mBal" class="notch">
-        <i data-ic="wallet"></i>
-        <div id="mBlob"></div>
-        <div class="mi">
-          <span class="k">Balance</span>
-          <b id="mBalance" tabindex="0" role="button" title="Click to change">-</b>
-          <input id="mEdit" class="medit" type="text" inputmode="decimal" maxlength="16" aria-label="Balance" hidden>
-          <small id="mIO">Click the amount to change it</small>
+      <!-- settings, as in the island: the account (sign in with an emailed code), then how it looks -->
+      <section class="view" id="v-settings">
+        <div class="group">
+          <span class="label">Account</span>
+          <div class="setrow">
+            <i class="av" id="accAv" hidden></i>
+            <span id="accText">Not signed in</span>
+            <button class="pillbtn" id="accBtn" type="button">Sign in</button>
+          </div>
+          <form class="accform" id="accForm" hidden autocomplete="on">
+            <input class="field" id="accIn" spellcheck="false" aria-label="Email or code">
+            <button class="pillbtn primary" id="accGo" type="submit">Send code</button>
+          </form>
         </div>
-        <div class="mg">
-          <span id="mbNote"></span>
-          <svg id="mbChart" viewBox="0 0 170 60" preserveAspectRatio="xMaxYMid meet">
-            <defs>
-              <linearGradient id="mbgLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--accent-2)"/></linearGradient>
-              <linearGradient id="mbgArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--accent);stop-opacity:.28"/><stop offset="1" style="stop-color:var(--accent);stop-opacity:0"/></linearGradient>
-            </defs>
-            <path id="mbArea" fill="url(#mbgArea)"/>
-            <path id="mbLine" fill="none" stroke="url(#mbgLine)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-            <line id="mbCross" y1="2" y2="58"/>
-            <circle id="mbHalo" r="8"/>
-            <circle id="mbDot" r="3.8"/>
-          </svg>
+        <div class="group">
+          <span class="label">Appearance</span>
+          <div class="setrow"><span>Theme</span><div class="seg" id="setTheme"><button data-v="dark" type="button">Dark</button><button data-v="light" type="button">Light</button><button data-v="auto" type="button">Auto</button></div></div>
+          <div class="setrow"><span>Palette</span><div class="swatches" id="setPalette"></div></div>
         </div>
-      </div>
-    </section>
+        <div class="bar foot"><span>Island Money 0.1</span><span id="setInstall"></span></div>
+      </section>
+    </main>
+
+    <nav id="dock" aria-label="Tabs">
+      <span id="dockInd"></span>
+      <button type="button" data-t="money" class="on"><i data-ic="wallet"></i><span>Money</span></button>
+      <button type="button" data-t="settings"><i data-ic="gear"></i><span>Settings</span></button>
+    </nav>
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
