@@ -672,37 +672,57 @@ async function loadGoals() {
   goals = (r.data || []).map((g) => ({ ...g, target: Number(g.target), saved: Number(g.saved), monthly: Number(g.monthly) }));
   renderGoals();
 }
-// what an "is over" goal can watch, and what each is worth now
+// what an "is over" goal can watch, what each is worth now, and the yearly rate it earns
 function overTargets() {
   const all = allAssets(), t = Wealth.totals(data.balance, all);
-  const list = [{ key: 'balance', label: 'Current account', value: data.balance }, { key: 'networth', label: 'Net worth', value: t.net }, { key: 'savings', label: 'All my savings', value: t.sav }, { key: 'investments', label: 'All my investments', value: t.inv }];
-  for (const a of all) if (a.kind === 'savings' || a.kind === 'investment') list.push({ key: String(a.id), label: a.name, value: a.value });
+  const wavg = (kind) => { const l = all.filter((a) => a.kind === kind); const tot = l.reduce((s, a) => s + a.value, 0); return tot > 0 ? l.reduce((s, a) => s + a.value * (a.rate || 0), 0) / tot : 0; };
+  const list = [{ key: 'balance', label: 'Current account', value: data.balance, rate: 0 }, { key: 'networth', label: 'Net worth', value: t.net, rate: 0 }, { key: 'savings', label: 'All my savings', value: t.sav, rate: wavg('savings') }, { key: 'investments', label: 'All my investments', value: t.inv, rate: wavg('investment') }];
+  for (const a of all) if (a.kind === 'savings' || a.kind === 'investment') list.push({ key: String(a.id), label: a.name, value: a.value, rate: a.rate || 0 });
   return list;
 }
-// one row's worth of text and numbers, whichever kind it is
+// one tile's worth of text and numbers, whichever kind it is
 function goalView(g) {
+  const deadline = g.deadline ? new Date(g.deadline + 'T12:00:00') : null;
+  let title, kind, now, rate, found = true;
   if (isOver(g)) {
     const w = overTargets().find((x) => x.key === g.source.slice(OVER.length));
-    if (!w) return { title: 'Account gone', sub: `is over ${eur(g.target)}`, pct: 0, done: false, line: 'The account this goal watched is gone: edit the goal', right: '' };
-    const o = Goals.over(w.value, g.target);
-    return { title: w.label, sub: `is over ${eur(g.target)} · now ${eur(w.value)}`, pct: o.pct, done: o.reached, line: o.reached ? `Over by ${eur(o.diff)}` : `${eur(o.diff)} to go`, right: o.reached ? '✓' : `${Math.round(o.pct * 100)}%` };
+    found = !!w; title = w ? w.label : 'Account gone'; kind = `is over ${eur(g.target)}`; now = w ? w.value : 0; rate = w ? w.rate : 0;
+    // with no monthly saving typed in, the current account goes at its own recent pace (the last 30 days)
+    if (w && w.key === 'balance' && !(g.monthly > 0) && !data.thin) { const pace = Goals.pace(data.history); if (pace > 0) g = { ...g, monthly: pace, paced: true }; }
+  } else {
+    const src = Goals.source(g, allAssets());
+    found = src.found; title = g.name; kind = 'Saving up'; now = src.saved; rate = src.rate;
   }
-  const src = Goals.source(g, allAssets()), deadline = g.deadline ? new Date(g.deadline + 'T12:00:00') : null;
-  const p = Goals.plan({ saved: src.saved, target: g.target, monthly: g.monthly || 0, rate: src.rate, deadline });
-  let line;
-  if (!src.found) line = 'The item this goal counted is gone: edit the goal';
-  else if (p.done) line = 'Reached';
-  else {
-    const when = p.reach ? `${eur(g.monthly || 0)}/month → ${monthYear(p.reach)}` : 'Add a monthly saving to see when';
-    line = deadline ? `By ${monthYear(deadline)}: ${p.status === 'ontrack' ? 'on track' : `needs ${eur(p.need)}/month`}. ${p.reach ? when : ''}` : when;
+  const p = Goals.plan({ saved: now, target: g.target, monthly: g.monthly || 0, rate, deadline });
+  const over = isOver(g);
+  const state = !found ? 'Check' : p.done ? (over ? 'Over' : 'Reached') : deadline ? (p.status === 'ontrack' ? 'On track' : 'Behind') : `${Math.round(p.pct * 100)}%`;
+  const left = !found ? '' : p.done ? (over ? `Over by ${eur(Math.abs(now - g.target))}` : 'Goal reached') : `${eur(Math.max(0, g.target - now))} ${over ? 'to go' : 'left'}`;
+  const when = !found || p.done ? '' : p.reach ? `≈ ${monthYear(p.reach)}` : 'Add a monthly saving for a date';
+  let hint = '';
+  if (!found) hint = 'What this goal counted is gone: edit it';
+  else if (!p.done) {
+    const parts = [];
+    if (g.monthly > 0) parts.push(g.paced ? `At your recent pace, +${eur(g.monthly)}/month` : `${eur(g.monthly)}/month planned`);
+    if (rate > 0) parts.push(`${rate.toFixed(2).replace(/0$/, '')}% a year`);
+    if (deadline) parts.push(`By ${monthYear(deadline)}: ${p.status === 'ontrack' ? 'on track' : `needs ${eur(p.need)}/month`}`);
+    hint = parts.join(' · ');
   }
-  return { title: g.name, sub: `${eur(src.saved)} of ${eur(g.target)} · ${Math.round(p.pct * 100)}%`, pct: p.pct, done: p.done, behind: p.status === 'behind', line, right: p.done ? '✓' : eur(p.remaining) + ' left' };
+  return { title, kind, now, target: g.target, pct: p.pct, done: p.done, behind: p.status === 'behind', state, left, when, hint };
 }
 function renderGoals() {
   $('gTag').textContent = !user ? 'Signed out' : !goalsReady ? 'Needs the database update' : '';
+  const views = goals.map(goalView), reached = views.filter((v) => v.done).length;
+  $('gSum').textContent = goals.length ? `${goals.length} goal${goals.length > 1 ? 's' : ''} · ${reached} reached` : '';
   $('goalList').innerHTML = goals.map((g, i) => {
-    const v = goalView(g), pct = Math.round(v.pct * 100);
-    return `<li data-id="${esc(g.id)}" tabindex="0"><i style="background:${GOAL_HUES[i % GOAL_HUES.length]}"></i><div class="main"><b>${esc(v.title)}</b><small>${esc(v.sub)}</small><div class="pbar ${v.done ? '' : v.behind ? 'warn' : ''}"><i style="width:${pct}%"></i></div><small class="gline ${v.done ? 'up' : v.behind ? 'down' : ''}">${esc(v.line)}</small></div><span class="amt">${esc(v.right)}</span></li>`;
+    const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.behind ? 'behind' : v.state === 'On track' ? 'ontrack' : '';
+    return `<li class="gtile" data-id="${esc(g.id)}" tabindex="0">
+      <div class="gh"><i style="background:${GOAL_HUES[i % GOAL_HUES.length]}"></i><b>${esc(v.title)}</b><span class="gstate ${tone}">${esc(v.state)}</span></div>
+      <div class="gkind">${esc(v.kind)}</div>
+      <div class="gnum"><b>${eur(v.now)}</b><span>of ${eur(v.target)}</span></div>
+      <div class="pbar ${v.done ? '' : v.behind ? 'warn' : ''}"><i style="width:${pct}%"></i></div>
+      <div class="gfoot"><span>${esc(v.left)}</span><span>${esc(v.when)}</span></div>
+      ${v.hint ? `<small class="gline">${esc(v.hint)}</small>` : ''}
+    </li>`;
   }).join('') || `<li class="empty">${user ? (goalsReady ? 'Tap the + to add something you are saving for.' : 'Needs the database update.') : 'Sign in to add your goals.'}</li>`;
 }
 
@@ -722,7 +742,7 @@ function openGoalSheet(goal) {
 function renderGoalSheet() {
   const d = goalDraft, over = d.mode === 'over';
   for (const b of document.querySelectorAll('#gMode button')) b.classList.toggle('on', b.dataset.m === d.mode);
-  $('gNameGroup').hidden = over; $('gSourceGroup').hidden = over; $('gExtraGroup').hidden = over; $('gOverGroup').hidden = !over;
+  $('gNameGroup').hidden = over; $('gSourceGroup').hidden = over; $('gOverGroup').hidden = !over;
   $('gAmtLabel').textContent = over ? 'Is over' : 'I want to reach';
   const pill = (v, n, cur, attr) => `<button type="button" role="option" data-${attr}="${esc(v)}" aria-selected="${v === cur}"${v === cur ? ' class="on"' : ''}>${esc(n)}</button>`;
   $('gNames').innerHTML = GOAL_NAMES.map((n) => pill(n, n, d.name, 'n')).join('');
@@ -758,7 +778,9 @@ $('gform').addEventListener('submit', async (e) => {
   if (over) {
     const w = overTargets().find((x) => x.key === d.overKey);
     if (!w) { $('gErr').textContent = 'Choose an account from the list'; return; }
-    row = { name: `${w.label} is over`.slice(0, 40), target, source: OVER + d.overKey, saved: 0, monthly: 0, deadline: null };
+    const monthly = $('gMonthly').value.trim() ? parseMoney($('gMonthly').value) : 0;
+    if (monthly === null || monthly < 0) { $('gErr').textContent = 'Amounts must be positive numbers'; return; }
+    row = { name: `${w.label} is over`.slice(0, 40), target, source: OVER + d.overKey, saved: 0, monthly, deadline: $('gDeadline').value || null };
   } else {
     const saved = $('gSaved').value.trim() ? parseMoney($('gSaved').value) : 0, monthly = $('gMonthly').value.trim() ? parseMoney($('gMonthly').value) : 0;
     if (!d.name) { $('gErr').textContent = 'Choose a name from the list'; return; }

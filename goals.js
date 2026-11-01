@@ -40,6 +40,11 @@ const Goals = (() => {
   function over(now, target) {
     return { pct: target > 0 ? Math.max(0, Math.min(1, now / target)) : 0, reached: now >= target, diff: r2(Math.abs(now - target)) };
   }
-  return { r2, addMonths, plan, source, over };
+  // how fast an account has been growing over its recent history (a list of daily balances, about 30 days): euros per month
+  function pace(history) {
+    if (!history || history.length < 7) return 0;
+    return r2((history[history.length - 1] - history[0]) / ((history.length - 1) / 30.4375));
+  }
+  return { r2, addMonths, plan, source, over, pace };
 })();
 if (typeof module !== 'undefined') module.exports = Goals; else window.Goals = Goals;

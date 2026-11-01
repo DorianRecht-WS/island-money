@@ -312,10 +312,23 @@ body.loading #nwAmount, body.loading #mNwAmount, body.loading #nwNote, body.load
 .pbar { height: 8px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; margin-top: var(--sp-2); }
 .pbar > i { display: block; height: 100%; width: 0; border-radius: var(--r-pill); background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .6s var(--ease); }
 .pbar.warn > i { background: var(--warn); }
-#goalList li { align-items: flex-start; cursor: pointer; padding: 14px 0; }
-#goalList li > i { margin-top: 6px; }
-#goalList .main { min-width: 0; }
-#goalList .main b { font-size: 15px; }
-#goalList .gline { display: block; margin-top: 6px; line-height: 1.35; }
-#goalList .amt { font-size: var(--fs-meta); color: var(--text-3); padding-top: 2px; }
-#goalList li:has(.gline.up) .amt { color: var(--ok); font-size: 20px; }
+
+/* each goal is a tile: its name and state, the amount against its target, a bar, then what is left and when */
+.gsum { display: block; margin: 2px 0 var(--sp-3); font-size: var(--fs-meta); color: var(--text-3); }
+#goalList { display: flex; flex-direction: column; gap: 10px; }
+#goalList li.gtile { display: block; border: 0; padding: 14px 14px 12px; background: var(--surface); border-radius: 14px; cursor: pointer; min-height: 0; }
+#goalList li.empty { background: none; padding: 6px 0; display: block; }
+.gh { display: flex; align-items: center; gap: 8px; }
+.gh i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.gh b { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; color: var(--text-hi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gstate { flex: none; font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; font-weight: 600; padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--text-2); }
+.gstate.ontrack, .gstate.done { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.gstate.behind { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+.gkind { margin: 2px 0 8px 16px; font-size: var(--fs-meta); color: var(--text-3); }
+.gnum { display: flex; align-items: baseline; gap: 8px; }
+.gnum b { font-size: 22px; font-weight: 700; letter-spacing: -.02em; color: var(--text-hi); font-variant-numeric: tabular-nums; }
+.gnum span { font-size: var(--fs-body); color: var(--text-3); font-variant-numeric: tabular-nums; }
+#goalList .pbar { margin: 8px 0; }
+.gfoot { display: flex; justify-content: space-between; gap: 10px; font-size: var(--fs-meta); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.gfoot span:last-child { color: var(--text-hi); font-weight: 600; text-align: right; }
+#goalList .gline { display: block; margin-top: 6px; font-size: var(--fs-meta); color: var(--text-3); line-height: 1.35; }
