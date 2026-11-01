@@ -24,7 +24,7 @@
 </script>
 <script src="theme.js?v=3"></script>
 <link rel="stylesheet" href="island.css?v=5">
-<link rel="stylesheet" href="web.css?v=41">
+<link rel="stylesheet" href="web.css?v=42">
 <link rel="modulepreload" href="bloub/view.js">
 <link rel="modulepreload" href="bloub/decor.js">
 <link rel="modulepreload" href="bloub/engine.js">
@@ -100,7 +100,7 @@
       <section class="view" id="v-goals">
         <div class="bar top"><span class="label">Goals</span><span id="gTag"></span></div>
         <div id="goalsCard">
-          <span class="gsum" id="gSum"></span>
+          <div class="hero" id="gHero"><div class="hblob" id="gBlob"></div><div class="htext"><b id="gHeroT"></b><small id="gSum"></small></div></div>
           <ul id="goalList"></ul>
           <button class="goaladd" id="goalAdd" type="button"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>Add a goal</button>
         </div>
@@ -109,6 +109,7 @@
       <!-- wealth: net worth, investments with their returns, and a growth calculator -->
       <section class="view" id="v-wealth">
         <div class="bar top"><span class="label">Wealth</span><span id="wTag"></span></div>
+        <div class="hero rev" id="wHero"><div class="htext"><b id="wHeroT"></b><small id="wHeroS"></small></div><div class="hblob big" id="wBlob"></div></div>
         <div id="nwCard" class="notch">
           <i data-ic="coins"></i>
           <span class="k">Net worth</span>
@@ -258,6 +259,6 @@
 <script defer src="wealth.js?v=3"></script>
 <script defer src="lock.js?v=4"></script>
 <script defer src="keypad.js?v=4"></script>
-<script defer src="app.js?v=56"></script>
+<script defer src="app.js?v=57"></script>
 </body>
 </html>

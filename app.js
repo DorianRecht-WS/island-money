@@ -36,30 +36,36 @@ const store = {
 };
 
 // ---- the blob (engine from github.com/jeremy-prt/bloub), drawn in the theme's ink on the island's colour. Loaded last.
-let mb = null, lb = null;   // lb: the blob of the lock screen
+let mb = null, lb = null, gb = null, wb = null;   // lb: the blob of the lock screen
 const lockBlobRuns = () => { if (lb) { if (document.documentElement.classList.contains('locked') && !document.hidden) lb.start(); else lb.stop(); } };
 const lbPaint = () => { if (!lb) return; const cs = getComputedStyle(document.documentElement); lb.setColors(cs.getPropertyValue('--blob-ink').trim(), cs.getPropertyValue('--bg').trim()); };
 const blobCall = (f) => { if (mb) f(mb); };
 function mood(expression, back, ms) { blobCall((b) => b.setExpression(expression)); if (back) setTimeout(() => blobCall((b) => b.setExpression(back)), ms); }
 function paintBlob() {
-  const cs = getComputedStyle(document.documentElement);
-  blobCall((b) => b.setColors(cs.getPropertyValue('--blob-ink').trim(), getComputedStyle($('mBal'), '::before').backgroundColor));
+  const cs = getComputedStyle(document.documentElement), ink = cs.getPropertyValue('--blob-ink').trim(), page = cs.getPropertyValue('--bg').trim();
+  blobCall((b) => b.setColors(ink, getComputedStyle($('mBal'), '::before').backgroundColor));
+  if (gb) gb.setColors(ink, page);   // these two sit on the page itself, not on a card
+  if (wb) wb.setColors(ink, page);
 }
 const loadBlob = (tries = 3) => import('./bloub/view.js').then(({ createBlob }) => {
   mb = createBlob($('mBlob'), { color: 'creme', paper: '#000000', facing: 'right' });
   paintBlob(); mb.setExpression('money'); mb.look(null); blobRuns();
+  gb = createBlob($('gBlob'), { color: 'creme', paper: '#000000', facing: 'right' }); gb.setExpression('heureux'); gb.look(null);
+  wb = createBlob($('wBlob'), { color: 'creme', paper: '#000000', facing: 'left' }); wb.setExpression('fier'); wb.look(null);
+  paintBlob(); blobRuns();
   lb = createBlob($('lockBlob'), { color: 'creme', paper: '#000000', facing: 'right' });   // the big one in the middle of the lock screen
   lbPaint(); lb.setExpression('money'); lb.look(null); lockBlobRuns();
   window.islandTheme.onChange(() => { paintBlob(); lbPaint(); });
-  document.addEventListener('mousemove', (e) => { mb.look(e.clientX, e.clientY); if (lb) lb.look(e.clientX, e.clientY); });
-  document.addEventListener('mouseleave', () => mb.look(null));
+  document.addEventListener('mousemove', (e) => { for (const b of [mb, lb, gb, wb]) if (b) b.look(e.clientX, e.clientY); });
+  document.addEventListener('mouseleave', () => { for (const b of [mb, lb, gb, wb]) if (b) b.look(null); });
+  $('gBlob').addEventListener('click', () => gb.play('wink', 1.2)); $('wBlob').addEventListener('click', () => wb.play('wink', 1.2));
   $('mBlob').addEventListener('click', () => mb.play('wink', 1.2));   // a tap on it winks
   if (!reduced && tab === 'money') blobEntrance($('mBlob'));
 }).catch((e) => { console.error('blob', e); if (tries > 1) setTimeout(() => loadBlob(tries - 1), 1500); });   // no blob: the numbers still work
 loadBlob();
 
 // the blob draws 30 times a second: only while the Money tab is on screen
-const blobRuns = () => { if (mb) { if (tab === 'money' && !document.hidden) mb.start(); else mb.stop(); } };
+const blobRuns = () => { for (const [b, t] of [[mb, 'money'], [gb, 'goals'], [wb, 'wealth']]) if (b) { if (tab === t && !document.hidden) b.start(); else b.stop(); } };
 document.addEventListener('visibilitychange', () => { blobRuns(); lockBlobRuns(); });
 
 // ---- the island's entrance: things rise in turn, the blob pops in, the number counts up, the line draws itself
@@ -311,7 +317,8 @@ function render(animate) {
   body.classList.toggle('out', !user && !pending);
   syncLoading();
   $('mTag').textContent = pending ? '' : user ? (link ? 'Live · bank' : 'Live') : 'Signed out'; $('mTag').classList.toggle('live', !!user);
-  $('mBalance').title = user ? 'Click to change' : 'Sign in';
+  $('mBalance').title = link && user ? 'From your bank' : user ? 'Click to change' : 'Sign in';
+  $('mBalance').classList.toggle('fixed', !!(link && user));
   if (!user && !pending) { $('mBalance').textContent = '€-'; say('Tap here to sign in'); drawChart(); return; }
   if (!animate) $('mBalance').textContent = eur(data.balance);
   say(link ? [link.synced_at ? 'Synced ' + ago(link.synced_at) : 'Syncing...', pendingAdj ? `includes ${signed(pendingAdj)} not yet in your bank's data` : ''].filter(Boolean).join('\n') : data.accounts ? 'Entered by hand · tap the amount to change it' : 'Tap the amount to set your balance');
@@ -321,7 +328,7 @@ function render(animate) {
 }
 // click the amount to change it: Enter saves, Escape cancels
 function startEdit() {
-  if (pending) return;
+  if (pending || (link && user)) return;   // with a bank connected the balance comes from the bank
   if (!user) { showTab('settings'); if (accStep === 'idle') accSet('email'); return; }
   if (editing) return;
   editing = true;
@@ -498,6 +505,8 @@ function renderWealth() {
 // the yearly growth card: each account at its own rate, added up
 function renderGrowth(all) {
   const g = Wealth.growth(all);
+  $('wHeroT').textContent = !user ? 'What you own' : all.length ? `${all.length} item${all.length > 1 ? 's' : ''} at work` : 'Nothing added yet';
+  $('wHeroS').textContent = !user ? 'Sign in to see it' : g.perYear > 0 ? `About ${eur(g.perYear)} a year in growth` : all.length ? 'Add a rate to see growth' : 'Add savings or an investment';
   $('gwAmount').textContent = user ? signed(g.perYear) : '€-';
   $('gwAmount').classList.toggle('down', g.perYear < 0);
   $('gwPct').textContent = !user ? '' : g.items.length ? `${pct(g.pct)} a year` : 'add a rate to a saving';
@@ -743,8 +752,10 @@ function goalView(g) {
 function renderGoals() {
   $('gTag').textContent = !user ? 'Signed out' : !goalsReady ? 'Needs the database update' : '';
   const views = goals.map(goalView), reached = views.filter((v) => v.done).length;
-  $('gSum').textContent = goals.length ? `${goals.length} goal${goals.length > 1 ? 's' : ''} · ${reached} reached` : '';
-  if (user && !goalsLoaded) { goalsHtml = ''; $('goalList').innerHTML = '<li class="gtile gsk"><div class="sk2"></div></li><li class="gtile gsk"><div class="sk2"></div></li>'; return; }
+  const next = views.filter((v) => !v.done).sort((a, b) => b.pct - a.pct)[0];
+  $('gHeroT').textContent = !user ? 'Your goals' : !goals.length ? 'No goals yet' : reached === goals.length ? 'All goals reached' : `${reached} of ${goals.length} reached`;
+  $('gSum').textContent = !user ? 'Sign in to add some' : !goals.length ? 'Add the first thing you are saving for' : next ? `Closest: ${next.title} · ${Math.round(next.pct * 100)}%` : 'Time for a new one?';
+  if (user && !goalsLoaded) { goalsHtml = ''; $('gHeroT').textContent = ''; $('gSum').textContent = ''; $('goalList').innerHTML = '<li class="gtile gsk"><div class="sk2"></div></li><li class="gtile gsk"><div class="sk2"></div></li>'; return; }
   const html = goals.map((g, i) => {
     const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.state === 'On track' ? 'ontrack' : '', hue = GOAL_HUES[i % GOAL_HUES.length], open = goalOpen.has(g.id), bar = v.done ? 'var(--ok)' : hue;
     // the chip in the notch: a tick once the goal is reached, otherwise a ring that fills as the goal does

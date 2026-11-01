@@ -454,3 +454,17 @@ body.loading .mstats.sk span { background: none; }
 #mStats > span { display: inline-flex; flex: none; width: auto; white-space: nowrap; }
 #mStats > span > i { display: inline; width: auto; height: auto; flex: none; }
 #mBal .mi small#mIO { white-space: pre-line; }
+
+/* a balance from the bank is not typed over */
+#mBalance.fixed { cursor: default; }
+#mBalance.fixed:hover { color: inherit; }
+
+/* Goals and Wealth each get the blob, at their own size and on their own side */
+.hero { display: flex; align-items: center; gap: var(--sp-4); padding: 2px var(--sp-1) var(--sp-1); }
+.hero.rev { justify-content: space-between; }
+.hblob { width: 64px; height: 64px; flex: none; position: relative; }
+.hblob.big { width: 96px; height: 96px; }
+.htext { flex: 1; min-width: 0; }
+.htext b { display: block; font-size: 20px; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; color: var(--text-hi); }
+.htext small { display: block; margin-top: 3px; font-size: 12px; line-height: 1.35; color: var(--text-3); }
+.hero.rev .htext { text-align: left; }
