@@ -379,7 +379,8 @@ $('bankBtn').addEventListener('click', async () => {
   if (!$('bankForm').hidden && !$('bankSel').options.length) {
     $('bankSel').innerHTML = '<option>Loading banks...</option>'; $('bankGo').disabled = true;
     try {
-      const { banks } = await bankCall('/banks?q=Epargne', 'GET');
+      let { banks } = await bankCall('/banks?q=Epargne', 'GET');
+      if (!banks.length) ({ banks } = await bankCall('/banks?q=', 'GET'));   // nothing under that name: show every French bank
       $('bankSel').innerHTML = banks.map((b) => `<option>${esc(b)}</option>`).join('') || '<option value="">No bank found</option>';
       $('bankGo').disabled = !banks.length;
     } catch (e) { $('bankSel').innerHTML = ''; $('bankForm').hidden = true; bankNote = fail(e); bankBad = true; renderBank(); }
