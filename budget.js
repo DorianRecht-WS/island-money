@@ -37,6 +37,9 @@ const Budget = (() => {
   }
   // the merchant's name, simplified: the same as merchantKey in supabase/functions/bank/sync.ts, so a correction made here is found there
   const merchantKey = (note) => String(note).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/^(CB|PAIEMENT CB|PAIEMENT PAR CARTE|ACHAT CB)\s+/, '').replace(/[0-9/.:*-]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
-  return { r2, SPEND, NOT_SPENT, monthStart, daysLeft, spentBy, summary, merchantKey };
+  // a readable name: the bank's text has the card's masked number, an invoice date and padding in it (the same as cleanNote in
+  // supabase/functions/bank/sync.ts; done here too so names look right even before the next sync)
+  const cleanNote = (raw) => String(raw || '').replace(/\d{4,6}\*+\d*/g, ' ').replace(/\bFACT\s*\d{4,8}\b/gi, ' ').replace(/^\s*(CB|PAIEMENT CB|PAIEMENT PAR CARTE|ACHAT CB)\s+/i, '').replace(/\s+/g, ' ').trim().split(' ').map((w) => (w.length <= 3 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())).join(' ');
+  return { r2, SPEND, NOT_SPENT, monthStart, daysLeft, spentBy, summary, merchantKey, cleanNote };
 })();
 if (typeof module !== 'undefined') module.exports = Budget; else window.Budget = Budget;

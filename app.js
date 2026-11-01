@@ -684,7 +684,7 @@ function renderBudget() {
     || '<li class="empty">Tap the + to give a category a monthly limit.</li>';
   // the latest spending, to check the sorting and to correct it
   const spend = recentTx.filter((t) => t.amount < 0 && !Budget.NOT_SPENT.has(t.category)).slice(0, 12);
-  $('rcList').innerHTML = spend.map((t) => `<li data-id="${esc(t.id)}" tabindex="0"><i style="background:${CAT_COLOR[Budget.SPEND.includes(t.category) ? t.category : 'Other']}"></i><div class="main"><b>${esc(t.note || t.category)}</b><small>${esc(t.day.slice(8))}/${esc(t.day.slice(5, 7))} · ${esc(Budget.SPEND.includes(t.category) ? t.category : 'Other')}${String(t.external_id || '').startsWith('quick:') ? ' · just paid, waiting for the bank' : ''}</small></div><span class="amt">${eur(t.amount)}</span></li>`).join('')
+  $('rcList').innerHTML = spend.map((t) => `<li data-id="${esc(t.id)}" tabindex="0"><i style="background:${CAT_COLOR[Budget.SPEND.includes(t.category) ? t.category : 'Other']}"></i><div class="main"><b>${esc(Budget.cleanNote(t.note) || t.category)}</b><small>${esc(t.day.slice(8))}/${esc(t.day.slice(5, 7))} · ${esc(Budget.SPEND.includes(t.category) ? t.category : 'Other')}${String(t.external_id || '').startsWith('quick:') ? ' · just paid, waiting for the bank' : ''}</small></div><span class="amt">${eur(t.amount)}</span></li>`).join('')
     || '<li class="empty">Your latest spending shows here.</li>';
 }
 
