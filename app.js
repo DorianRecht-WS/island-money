@@ -267,6 +267,7 @@ async function load(animate) {
   data.thin = history.length < 2 || history.every((v) => v === history[0]);
   store.set({ uid: user.id, email: user.email || '', accounts: data.accounts, balance: data.balance, history: data.history, thin: data.thin });
   loadAssets();   // (not awaited: the balance is already on screen)
+  if (!goalsLoaded) loadGoals();
   render(animate && !had);
   if (had && before !== data.balance && tab === 'money') { countUp($('mBalance'), data.balance, 700, 0, before); drawIn(); }   // the cached number was out of date
 }
@@ -484,9 +485,9 @@ function renderWealth() {
 function renderGrowth(all) {
   const g = Wealth.growth(all);
   $('gwAmount').textContent = user ? `${signed(g.perYear)} a year` : '€-';
-  $('gwAmount').className = g.perYear < 0 ? 'down' : '';
+  $('gwAmount').classList.toggle('down', g.perYear < 0);
   $('gwPct').textContent = !user ? '' : g.items.length ? pct(g.pct) : 'add a rate to a saving';
-  $('gwPct').className = !g.items.length ? 'none' : g.pct < 0 ? 'down' : '';
+  $('gwPct').classList.toggle('none', !g.items.length); $('gwPct').classList.toggle('down', !!g.items.length && g.pct < 0);
 }
 
 // ---- adding and editing: tap a row to change what it is worth today
@@ -674,17 +675,18 @@ $('lockSw').addEventListener('click', async () => {
 const GOAL_NAMES = ['Holiday', 'Emergency fund', 'New phone', 'Car', 'Home deposit', 'Wedding', 'Education', 'Gift', 'Other'];
 const GOAL_HUES = ['var(--c-sky)', 'var(--c-pink)', 'var(--c-green)', 'var(--c-orange)', 'var(--c-violet)', 'var(--c-yellow)', 'var(--c-blue)', 'var(--c-red)', 'var(--c-lime)'];
 const OVER = 'over:';   // an "is over" goal keeps what it watches in its source, as over:balance, over:networth, over:savings, over:investments or over:<item id>
-let goals = [], goalsReady = true, goalDraft = null, goalsIntro = false; const goalFlipped = new Set();   // ids of the goals turned over to show their details
+let goals = [], goalsReady = true, goalDraft = null, goalsIntro = false, goalsLoaded = false; const goalFlipped = new Set();   // ids of the goals turned over to show their details
    // goalDraft: the goal being added or edited
 const monthYear = (d) => d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 const isOver = (g) => String(g.source || '').startsWith(OVER);
 
 async function loadGoals() {
-  if (!user) { goals = []; renderGoals(); return; }
+  if (!user) { goals = []; goalsLoaded = true; renderGoals(); return; }
   const r = await sb.from('goals').select('*').order('created_at');
   goalsReady = !r.error;
   const next = (r.data || []).map((g) => ({ ...g, target: Number(g.target), saved: Number(g.saved), monthly: Number(g.monthly) }));
-  if (JSON.stringify(next) === JSON.stringify(goals) && goalsIntro === false) { goals = next; return; }   // nothing changed: do not rebuild the cards
+  const first = !goalsLoaded; goalsLoaded = true;
+  if (!first && JSON.stringify(next) === JSON.stringify(goals) && goalsIntro === false) { goals = next; return; }   // nothing changed: do not rebuild the cards
   goals = next; renderGoals();
 }
 // what an "is over" goal can watch, what each is worth now, and the yearly rate it earns
@@ -728,6 +730,7 @@ function renderGoals() {
   $('gTag').textContent = !user ? 'Signed out' : !goalsReady ? 'Needs the database update' : '';
   const views = goals.map(goalView), reached = views.filter((v) => v.done).length;
   $('gSum').textContent = goals.length ? `${goals.length} goal${goals.length > 1 ? 's' : ''} · ${reached} reached` : '';
+  if (user && !goalsLoaded) { $('goalList').innerHTML = '<li class="gtile gsk"><div class="sk2"></div></li><li class="gtile gsk"><div class="sk2"></div></li>'; return; }
   $('goalList').innerHTML = goals.map((g, i) => {
     const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.behind ? 'behind' : v.state === 'On track' ? 'ontrack' : '';
     const bar = `<div class="pbar ${v.done ? '' : v.behind ? 'warn' : ''}"><i style="width:${pct}%"></i></div>`;
@@ -849,7 +852,7 @@ function onSession(session) {
     // not inside the auth callback: it holds the auth lock. Then, with a bank connected, read it (the function paces itself) and show what it found.
     setTimeout(() => load(true).then(() => bankSync(false)).then((fresh) => fresh && load(false)), 0);
   } else {
-    store.clear(); link = null; renderBank(); assets = []; bankAssets = []; assetsLoaded = true; closeAssetForm(); renderWealth(); goals = []; renderGoals();
+    store.clear(); link = null; renderBank(); assets = []; bankAssets = []; assetsLoaded = true; closeAssetForm(); renderWealth(); goals = []; goalsLoaded = true; renderGoals();
     data = { balance: 0, history: [0, 0], accounts: 0, thin: true, loaded: true };
     accStep = 'idle'; renderAccount(); render(false);
   }

@@ -65,6 +65,12 @@ body.out #mbChart { opacity: .25; }
 body.loading .chartsk { display: block; }
 body.loading #mbChart { visibility: hidden; }
 body.loading .sk { color: transparent !important; border-radius: var(--r-2); user-select: none; pointer-events: none; }
+body.loading #mBlob > canvas, body.loading #mBlob > svg { visibility: hidden; }
+#mBlob { position: relative; }
+body.loading #mBlob:not(:empty)::after { content: ""; position: absolute; inset: 10px; border-radius: 50%; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; }
+body.loading .bar.top > span:last-child { visibility: hidden; }
+#goalList li.gsk { padding: 0; }
+.gsk .sk2 { height: 76px; border-radius: 13px; }
 body.loading #mBlob:empty::before { content: ""; display: block; width: 88px; height: 88px; margin: 10px; border-radius: 50%; }
 body.loading #mbNote.sk { min-width: 90px; min-height: 12px; }
 @media (prefers-reduced-motion: reduce) { .chartsk, body.loading .sk, body.loading #mBlob:empty::before { animation: none; } }
