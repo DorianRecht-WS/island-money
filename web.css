@@ -470,3 +470,6 @@ body.loading .mstats.sk span { background: none; }
 .hero.rev .htext { text-align: left; }
 
 .setrow > .swatches { grid-template-columns: repeat(7, 1fr); }
+
+.setrow > .swatches { grid-template-columns: repeat(8, 1fr); }
+.swatches button { width: 34px; height: 34px; }

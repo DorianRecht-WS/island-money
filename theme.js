@@ -21,6 +21,13 @@
         dark: { '--bg': '#171413', '--card': '#26211f', '--card-line': '#332c29', '--surface': '#2e2825', '--surface-2': '#3a332f', '--line': '#211c1a', '--line-2': '#443c37',
           '--text-hi': '#fbf8f2', '--text': '#efe9e0', '--text-2': '#c9bdb3', '--text-3': '#9a8d84', '--text-4': '#6f645d', '--on-accent': '#241d1a', '--blob-ink': '#f6f4ec' },
       } },
+    hera:   { name: 'Hera',   a: ['#8776ea', '#8776ea'], b: ['#c0bcdf', '#544f69'],
+      surfaces: {
+        light: { '--bg': '#f1f2f4', '--card': '#dddaee', '--card-line': '#d1cde8', '--surface': '#d1cde8', '--surface-2': '#c0bcdf', '--line': '#e3e1f0', '--line-2': '#c0bcdf',
+          '--text-hi': '#252526', '--text': '#2e2d33', '--text-2': '#544f69', '--text-3': '#66627a', '--text-4': '#a6a3a1', '--on-accent': '#ffffff', '--blob-ink': '#544f69', '--edge': 'rgba(84, 79, 105, .14)' },
+        dark: { '--bg': '#17171a', '--card': '#252526', '--card-line': '#33323c', '--surface': '#2f2d3a', '--surface-2': '#3b3850', '--line': '#1f1f24', '--line-2': '#544f69',
+          '--text-hi': '#f1f2f4', '--text': '#e4e3ea', '--text-2': '#c0bcdf', '--text-3': '#a6a3a1', '--text-4': '#6d6980', '--on-accent': '#ffffff', '--blob-ink': '#f1f2f4' },
+      } },
     sky:    { name: 'Sky',    a: ['#8ec5ff', '#3b82d9'], b: ['#c9a6ff', '#8a5fe0'] },
   };
   // hues for the cards' chips (Money): each kind of card has its own, so neighbours never match; [on dark, on light]
