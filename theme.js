@@ -14,6 +14,13 @@
     ember:  { name: 'Ember',  a: ['#ff9a5a', '#e0561f'], b: ['#ffd166', '#d99a1c'] },
     aurora: { name: 'Aurora', a: ['#7ae8d0', '#14a39a'], b: ['#8da2ff', '#5566e6'] },
     coral:  { name: 'Coral',  a: ['#ff7b72', '#e5483b'], b: ['#ffb86b', '#d9822b'] },
+    sand:   { name: 'Sand',   a: ['#e4c6bb', '#c9897a'], b: ['#c9bab2', '#a89a92'],
+      surfaces: {
+        light: { '--bg': '#f6f4ec', '--card': '#e0d3cd', '--card-line': '#d6c7c1', '--surface': '#d6c7c1', '--surface-2': '#c9bab2', '--line': '#e0d3cd', '--line-2': '#c9bab2',
+          '--text-hi': '#241d1a', '--text': '#2f2723', '--text-2': '#51453f', '--text-3': '#7a6c64', '--text-4': '#a3958c', '--on-accent': '#241d1a', '--blob-ink': '#3a2f2a', '--edge': 'rgba(60, 40, 30, .14)' },
+        dark: { '--bg': '#171413', '--card': '#26211f', '--card-line': '#332c29', '--surface': '#2e2825', '--surface-2': '#3a332f', '--line': '#211c1a', '--line-2': '#443c37',
+          '--text-hi': '#fbf8f2', '--text': '#efe9e0', '--text-2': '#c9bdb3', '--text-3': '#9a8d84', '--text-4': '#6f645d', '--on-accent': '#241d1a', '--blob-ink': '#f6f4ec' },
+      } },
     sky:    { name: 'Sky',    a: ['#8ec5ff', '#3b82d9'], b: ['#c9a6ff', '#8a5fe0'] },
   };
   // hues for the cards' chips (Money): each kind of card has its own, so neighbours never match; [on dark, on light]
@@ -30,7 +37,12 @@
   function apply() {
     const root = document.documentElement, r = resolved(), p = PALETTES[s.palette], dark = r === 'dark';
     root.dataset.theme = r;
-    for (const [k, v] of Object.entries(BASE)) dark ? root.style.setProperty(k, v) : root.style.removeProperty(k);
+    // surfaces: the shared dark base, or the palette's own (a palette like Sand restyles the page and the cards too)
+    const own = p.surfaces && p.surfaces[dark ? 'dark' : 'light'];
+    for (const k of new Set([...Object.keys(BASE), '--on-accent', '--blob-ink', '--edge'])) {
+      const v = own && own[k] !== undefined ? own[k] : dark ? BASE[k] : undefined;
+      v !== undefined ? root.style.setProperty(k, v) : root.style.removeProperty(k);
+    }
     root.style.setProperty('--accent', p.a[dark ? 0 : 1]);
     root.style.setProperty('--accent-2', p.b[dark ? 0 : 1]);
     for (const [k, v] of Object.entries(HUES)) root.style.setProperty('--c-' + k, v[dark ? 0 : 1]);

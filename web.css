@@ -468,3 +468,5 @@ body.loading .mstats.sk span { background: none; }
 .htext b { display: block; font-size: 20px; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; color: var(--text-hi); }
 .htext small { display: block; margin-top: 3px; font-size: 12px; line-height: 1.35; color: var(--text-3); }
 .hero.rev .htext { text-align: left; }
+
+.setrow > .swatches { grid-template-columns: repeat(7, 1fr); }
