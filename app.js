@@ -649,12 +649,18 @@ const root = document.documentElement;
 let unlockCtl = null, hiddenAt = 0, unlockedAt = 0;   // unlockCtl: the attempt in progress (a new one replaces it)
 const AWAY_MS = 3000;   // away from the app for longer than this: locked when you come back
 const lockSay = (t) => { $('lockMsg').textContent = t; };
+// the app was drawn behind the lock cover, out of sight: once it opens, fetch again and play the screen's entrance as on a fresh start
+function afterUnlock() {
+  if (document.body.classList.contains('loading')) introWanted = true;   // still loading: the entrance plays when it is ready
+  else setTimeout(() => { enter(tab, true); if (user && tab === 'money') refresh(); }, 40);
+  if (user && tab === 'goals') loadGoals();
+}
 async function tryUnlock() {
   if (!root.classList.contains('locked')) return;
   if (unlockCtl) unlockCtl.abort();
   const ctl = unlockCtl = new AbortController();
   lockSay('Unlocking...');
-  try { await AppLock.verify(ctl.signal); if (ctl !== unlockCtl) return; unlockedAt = Date.now(); hiddenAt = 0; root.classList.remove('locked'); lockBlobRuns(); blobRuns(); sizeChart(); }
+  try { await AppLock.verify(ctl.signal); if (ctl !== unlockCtl) return; unlockedAt = Date.now(); hiddenAt = 0; root.classList.remove('locked'); lockBlobRuns(); blobRuns(); sizeChart(); afterUnlock(); }
   catch (e) { if (ctl === unlockCtl) lockSay(e && e.name === 'NotAllowedError' ? 'Tap anywhere to unlock' : 'Could not unlock, tap anywhere to try again'); }
 }
 function lockNow() {
