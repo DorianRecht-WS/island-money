@@ -1,5 +1,5 @@
 # Island Money
 
-A small web app in the Dynamic Island look: sign in with an emailed code, click the balance to change it.
-Plain HTML/JS, no build step. `config.js` holds the public Supabase URL and anon key (row level security protects the data).
-The blob engine in `bloub/` is from github.com/jeremy-prt/bloub (see its LICENSE).
+Island Money is an Android app. Releases: https://github.com/DorianRecht-WS/island-money-app/releases/latest
+
+This repository only serves the small page at https://dorianrecht-ws.github.io/island-money/ (privacy policy, terms, and the hand-over to the app).

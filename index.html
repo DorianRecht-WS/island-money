@@ -2,264 +2,38 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>Island Money</title>
-<meta name="theme-color" content="#08080d">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Island Money">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="preconnect" href="https://cfstamyhaocixxubrdqr.supabase.co" crossorigin>
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>
-  // The app lock: when it is on, the page starts locked (the cover hides everything until the device says it is you).
-  // A reload you asked for yourself (pull down) and a quick trip to another app do not lock it again.
-  try {
-    var lk = JSON.parse(localStorage.getItem('money.lock') || 'null'), re = +sessionStorage.getItem('money.reload') || 0;
-    if (lk && lk.id && Date.now() - re > 15000) document.documentElement.classList.add('locked');
-  } catch (e) { /* no storage: no lock */ }
-</script>
-<script src="theme.js?v=6"></script>
-<link rel="stylesheet" href="island.css?v=6">
-<link rel="stylesheet" href="web.css?v=64">
-<link rel="modulepreload" href="bloub/view.js">
-<link rel="modulepreload" href="bloub/decor.js">
-<link rel="modulepreload" href="bloub/engine.js">
-<link rel="modulepreload" href="bloub/expressions.js">
-<link rel="modulepreload" href="bloub/eyefit.js">
-<link rel="modulepreload" href="bloub/face.js">
-<link rel="modulepreload" href="bloub/gaze.js">
-<link rel="modulepreload" href="bloub/math.js">
-<link rel="modulepreload" href="bloub/profiles.js">
-<link rel="modulepreload" href="bloub/repere.js">
-<link rel="modulepreload" href="bloub/shape.js">
-<link rel="modulepreload" href="bloub/skins.js">
-<link rel="modulepreload" href="bloub/states.js">
+<style>
+  :root { --bg: #eef0f6; --text: #151a26; --soft: #5b6580; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #08080d; --text: #eceef4; --soft: #7b8094; } }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, sans-serif; display: grid; place-items: center; text-align: center; }
+  main { padding: 24px; }
+  b { display: block; font-size: 20px; letter-spacing: -.01em; margin-bottom: 6px; }
+  a { color: var(--soft); text-decoration: none; margin: 0 8px; font-size: 13px; }
+  p { margin: 14px 0 0; }
+</style>
 </head>
-<body class="loading booting">
-<!-- The island's own look, copied from ../ui: its tokens (island.css, theme.js), icons, blob (bloub/) and notched cards (notch.js).
-     On a phone this is the whole screen, with the tabs at the bottom like an app; on a computer it is the island panel in the middle of the page. -->
-<div id="pill" class="open">
-  <div id="content">
-    <header id="appbar"><b>Island Money</b></header>
-    <!-- pull down from the upper half of the screen to reload the balance -->
-    <div id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></div>
-
-    <main id="views">
-      <!-- the balance: the island's Money card; click the amount to change it -->
-      <section class="view on" id="v-money">
-        <div class="bar top"><span class="label">Balance</span><span id="mTag"></span></div>
-        <div id="mBal" class="notch">
-          <i data-ic="wallet"></i>
-          <div id="mBlob"></div>
-          <div class="mi">
-            <span class="k">Balance</span>
-            <b id="mBalance" class="sk" tabindex="0" role="button" title="Click to change">€0,000</b>
-            <input id="mEdit" class="medit" type="text" inputmode="decimal" maxlength="16" aria-label="Balance" hidden>
-            <div id="mStats" class="mstats sk" hidden><span>Today +€00</span><span>7 days +€000</span></div>
-            <small id="mIO" class="sk">Loading your balance</small>
-          </div>
-        </div>
-        <div id="mChart" class="notch">
-          <i data-ic="trend"></i>
-          <div class="ch"><span class="k">Last 30 days</span><span id="mbNote" class="sk"></span></div>
-          <div class="chartbox">
-            <svg id="mbChart" role="img" aria-label="Balance over the last 30 days">
-              <defs>
-                <linearGradient id="mbgLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--accent-2)"/></linearGradient>
-                <linearGradient id="mbgArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--accent);stop-opacity:.28"/><stop offset="1" style="stop-color:var(--accent);stop-opacity:0"/></linearGradient>
-              </defs>
-              <path id="mbArea" fill="url(#mbgArea)"/>
-              <path id="mbLine" fill="none" stroke="url(#mbgLine)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-              <line id="mbCross" y1="2" y2="58"/>
-              <circle id="mbHalo" r="8"/>
-              <circle id="mbDot" r="3.8"/>
-            </svg>
-            <div class="chartsk"></div>
-            <i class="chartcover" id="mbCover" aria-hidden="true"></i>
-          </div>
-        </div>
-        <div class="duo">
-        <button id="mNw" class="notch" type="button" aria-label="Net worth, open the Wealth tab">
-          <i data-ic="coins"></i>
-          <span class="k">Net worth</span>
-          <b id="mNwAmount" class="sk">&euro;00,000.00</b>
-          <small id="mNwNote" class="sk">Savings &euro;0,000.00 &middot; investments &euro;0,000.00</small>
-        </button>
-        <div id="gwCard" class="notch">
-          <i data-ic="trend"></i>
-          <span class="k">Yearly growth</span>
-          <div class="gwrow"><b id="gwAmount" class="sk">+&euro;000.00 a year</b><span id="gwPct" class="sk">+0.0%</span></div>
-        </div>
-        </div>
-      </section>
-
-      <!-- goals: what you are saving for, and when you will get there -->
-      <section class="view" id="v-goals">
-        <div class="bar top"><span class="label">Goals</span><span id="gTag"></span></div>
-        <div id="goalsCard">
-          <div class="hero" id="gHero"><div class="hblob" id="gBlob"></div><div class="htext"><b id="gHeroT"></b><small id="gSum"></small></div></div>
-          <ul id="goalList"></ul>
-          <button class="goaladd" id="goalAdd" type="button"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>Add a goal</button>
-        </div>
-      </section>
-
-      <!-- wealth: net worth, investments with their returns, and a growth calculator -->
-      <section class="view" id="v-wealth">
-        <div class="bar top"><span class="label">Wealth</span><span id="wTag"></span></div>
-        <div class="hero rev" id="wHero"><div class="htext"><b id="wHeroT"></b><small id="wHeroS"></small></div><div class="hblob big" id="wBlob"></div></div>
-        <div id="nwCard" class="notch">
-          <i data-ic="coins"></i>
-          <span class="k">Net worth</span>
-          <b id="nwAmount" class="sk">&euro;00,000.00</b>
-          <small id="nwNote" class="sk">Balance &euro;0,000.00 &middot; investments &euro;0,000.00</small>
-          <div id="nwBar" aria-hidden="true"></div>
-          <div id="nwLegend"></div>
-        </div>
-        <div id="invCard" class="notch" data-bl="1">
-          <i data-ic="invest"></i>
-          <span class="k">Savings &amp; investments</span>
-          <ul id="assetList" class="alist"></ul>
-          <button class="mplus" id="assetAdd" type="button" aria-label="Add savings or an investment"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
-        </div>
-      </section>
-
-      <!-- settings, as in the island: the account (sign in with an emailed code), then how it looks -->
-      <section class="view" id="v-settings">
-        <div class="group notch">
-          <i data-ic="bank"></i>
-          <span class="label">Account</span>
-          <div class="setrow">
-            <i class="av" id="accAv" hidden></i>
-            <span id="accText">Not signed in</span>
-            <button class="pillbtn" id="accBtn" type="button">Sign in</button>
-          </div>
-          <form class="accform" id="accForm" hidden autocomplete="on">
-            <input class="field" id="accIn" spellcheck="false" aria-label="Email or code">
-            <button class="pillbtn primary" id="accGo" type="submit">Send code</button>
-          </form>
-        </div>
-        <div class="group notch" id="bankGroup">
-          <i data-ic="coins"></i>
-          <span class="label">Bank</span>
-          <div class="setrow">
-            <span id="bankText">No bank connected<small id="bankSmall">Your real balance and transactions</small></span>
-            <button class="pillbtn" id="bankSync" type="button" hidden>Sync now</button>
-            <button class="pillbtn primary" id="bankBtn" type="button">Connect</button>
-          </div>
-          <small class="fine" id="bankBal" hidden></small>
-          <button class="link" id="bankMore" type="button" hidden>Share more accounts</button>
-          <form class="accform" id="bankForm" hidden>
-            <select class="field" id="bankSel" aria-label="Your bank"></select>
-            <button class="pillbtn primary" id="bankGo" type="submit">Continue</button>
-          </form>
-        </div>
-        <div class="group notch" id="lockGroup">
-          <i data-ic="lock"></i>
-          <span class="label">Security</span>
-          <div class="setrow"><span>Lock the app<small id="lockSmall">Ask for your fingerprint, face or phone code</small></span><button class="switch" id="lockSw" type="button" role="switch" aria-checked="false" aria-label="Lock the app"></button></div>
-        </div>
-        <div class="group notch">
-          <i data-ic="gear"></i>
-          <span class="label">Appearance</span>
-          <div class="setrow"><span>Theme</span><div class="seg" id="setTheme"><button data-v="dark" type="button">Dark</button><button data-v="light" type="button">Light</button><button data-v="auto" type="button">Auto</button></div></div>
-          <div class="setrow"><span>Palette</span><div class="swatches" id="setPalette"></div></div>
-        </div>
-        <div class="group notch" id="appGroup" hidden>
-          <i data-ic="add"></i>
-          <span class="label">App</span>
-          <div class="setrow"><span>Add to your home screen<small id="appSmall">Opens full screen, like an app</small></span><button class="pillbtn primary" id="appBtn" type="button">Install</button></div>
-        </div>
-        <div class="bar foot"><span>Island Money 0.1</span><span><a class="link" href="privacy.html">Privacy</a> &middot; <a class="link" href="terms.html">Terms</a></span></div>
-      </section>
-    </main>
-
-    <nav id="dock" aria-label="Tabs">
-      <span id="dockInd"></span>
-      <button type="button" data-t="money" class="on"><i data-ic="wallet"></i><span>Money</span></button>
-      <button type="button" data-t="goals"><i data-ic="calendar"></i><span>Goals</span></button>
-      <button type="button" data-t="wealth"><i data-ic="invest"></i><span>Wealth</span></button>
-      <button type="button" data-t="settings"><i data-ic="gear"></i><span>Settings</span></button>
-    </nav>
-  </div>
-</div>
-<!-- the add / edit sheet: slides up from the bottom, laid out like the Settings lists -->
-<div id="sheet" hidden>
-  <div id="sheetBg"></div>
-  <form id="assetForm" class="sheetpanel" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-    <div class="grab" aria-hidden="true"></div>
-    <div class="shhead"><b id="sheetTitle">New</b><button type="button" id="sheetX" class="shx" aria-label="Close">&times;</button></div>
-    <div class="seg" id="asKindSeg" role="group" aria-label="Type">
-      <button type="button" data-k="savings">Savings</button><button type="button" data-k="investment" class="on">Investment</button><button type="button" data-k="property">Property</button><button type="button" data-k="debt">Debt</button>
-    </div>
-    <input type="hidden" id="asKind" value="investment">
-    <div class="shgroup">
-      <div class="srow"><span>Name</span><b id="asNameShow" class="shval">Choose one</b></div>
-      <div class="opts" id="asNames" role="listbox" aria-label="Name"></div>
-      <input type="hidden" id="asName">
-    </div>
-    <div class="amtbox"><span class="k">Worth now</span><div class="amtin"><i>&euro;</i><input id="asValue" inputmode="decimal" maxlength="14" placeholder="0" required aria-label="Worth now in euros"></div></div>
-    <div class="shgroup">
-      <label class="srow" id="asInvestedBox"><span>Total deposited<small>What you put in yourself</small></span><input id="asInvested" inputmode="decimal" maxlength="14" placeholder="0 &euro;"></label>
-      <label class="srow"><span>Interest per year</span><input id="asRate" inputmode="decimal" maxlength="6" placeholder="0 %"></label>
-      <div class="hscroll" id="asRates"></div>
-      <label class="srow"><span>Since</span><input id="asSince" type="date"></label>
-    </div>
-    <small class="fine" id="asRatesNote"></small>
-    <p class="err" id="asErr" role="alert"></p>
-    <button class="pillbtn primary bigbtn" id="asSave" type="submit">Save</button>
-    <button class="shlink" id="asCancel" type="button">Cancel</button>
-  </form>
-</div>
-
-<!-- the goal sheet: add or edit a goal -->
-<div id="gsheet" hidden>
-  <div id="gsheetBg"></div>
-  <form id="gform" class="sheetpanel" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="gTitle">
-    <div class="grab" aria-hidden="true"></div>
-    <div class="shhead"><b id="gTitle">New goal</b><button type="button" id="gX" class="shx" aria-label="Close">&times;</button></div>
-    <div class="seg" id="gMode" role="group" aria-label="Kind of goal"><button type="button" data-m="save" class="on">Save up</button><button type="button" data-m="over">Account is over</button></div>
-    <div class="shgroup" id="gOverGroup" hidden>
-      <div class="srow"><span>Account</span><b id="gOverShow" class="shval">Current account</b></div>
-      <div class="opts" id="gOverAccts" role="listbox" aria-label="Account"></div>
-    </div>
-    <div class="shgroup" id="gNameGroup">
-      <div class="srow"><span>Goal</span><b id="gNameShow" class="shval none">Choose one</b></div>
-      <div class="opts" id="gNames" role="listbox" aria-label="Goal"></div>
-    </div>
-    <div class="amtbox"><span class="k" id="gAmtLabel">I want to reach</span><div class="amtin"><i>&euro;</i><input id="gTarget" inputmode="decimal" maxlength="12" placeholder="0" aria-label="Amount to reach in euros"></div></div>
-    <div class="shgroup" id="gSourceGroup">
-      <div class="srow"><span>Counts</span><b class="shval">What you have set aside</b></div>
-      <div class="opts" id="gSources" role="listbox" aria-label="What counts toward the goal"></div>
-      <label class="srow" id="gSavedRow"><span>Saved so far</span><input id="gSaved" inputmode="decimal" maxlength="12" placeholder="0 &euro;"></label>
-    </div>
-    <div class="shgroup" id="gExtraGroup">
-      <label class="srow"><span>Saving each month<small>Optional</small></span><input id="gMonthly" inputmode="decimal" maxlength="12" placeholder="0 &euro;"></label>
-      <label class="srow"><span>Deadline<small>Optional</small></span><input id="gDeadline" type="date"></label>
-    </div>
-    <p class="err" id="gErr" role="alert"></p>
-    <button class="pillbtn primary bigbtn" id="gSave" type="submit">Save</button>
-    <button class="shlink" id="gCancel" type="button">Cancel</button>
-  </form>
-</div>
-
-<!-- the lock cover: a plain screen with the blob in the middle, waiting for you (the app behind it is not drawn at all) -->
-<div id="lock" role="dialog" aria-label="Island Money is locked">
-  <div id="lockBlob"></div>
-  <small id="lockMsg">Unlocking...</small>
-  <button class="shlink" id="lockOut" type="button">Sign out instead</button>
-</div>
-<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script defer src="config.js"></script>
-<script defer src="icons.js"></script>
-<script defer src="notch.js?v=10"></script>
-<script defer src="goals.js?v=3"></script>
-<script defer src="wealth.js?v=3"></script>
-<script defer src="lock.js?v=4"></script>
-<script defer src="keypad.js?v=4"></script>
-<script defer src="app.js?v=74"></script>
+<body>
+<main>
+  <b>Island Money</b>
+  <span style="color: var(--soft)">The app lives on your phone.</span>
+  <p><a id="open" href="#">Open the app</a> <a href="https://github.com/DorianRecht-WS/island-money-app/releases/latest">Get the Android app</a></p>
+  <p><a href="privacy.html">Privacy</a> <a href="terms.html">Terms</a></p>
+</main>
+<script>
+  // On Android this page only hands over to the app: the bank sends you back here (?bank=ok), and the page opens the app on its own.
+  // Without the app installed, the phone goes to the releases page to download it.
+  const q = new URLSearchParams(location.search), bank = q.get('bank');
+  const store = 'https://github.com/DorianRecht-WS/island-money-app/releases/latest';
+  const link = (path) => `intent://${path}#Intent;scheme=moneyisland;package=studio.inspyr.moneyisland;S.browser_fallback_url=${encodeURIComponent(store)};end`;
+  if (/android/i.test(navigator.userAgent)) {
+    const to = link(bank ? `bank?result=${encodeURIComponent(bank)}` : 'open');
+    document.getElementById('open').href = to;
+    if (bank) location.replace(to);   // only coming back from the bank opens it by itself; a plain visit shows the page
+  } else document.getElementById('open').hidden = true;
+</script>
 </body>
 </html>
