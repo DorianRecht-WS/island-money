@@ -392,6 +392,8 @@ async function bankCall(path, method = 'POST', body = {}) {
   return out;
 }
 const bankReturn = new URLSearchParams(location.search).get('bank');   // set by the function when the bank sends you back
+// on Android, the native Island Money app takes the return (its link opens it); without the app, Chrome falls back to this page
+if (bankReturn && /android/i.test(navigator.userAgent) && !location.search.includes('native=0')) location.replace(`intent://bank?result=${encodeURIComponent(bankReturn)}#Intent;scheme=moneyisland;package=studio.inspyr.moneyisland;S.browser_fallback_url=${encodeURIComponent(location.href + '&native=0')};end`);
 if (bankReturn) history.replaceState(null, '', location.pathname);
 let bankNote = { ok: 'Bank connected. Loading your balance...', cancelled: 'The connection was cancelled', error: 'The connection did not work, try again' }[bankReturn] || '', bankBad = bankReturn === 'error', bankBusy = false;
 const ago = (iso) => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
