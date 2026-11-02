@@ -27,8 +27,8 @@ button, a, #dock { -webkit-tap-highlight-color: transparent; }
 #dock > button i { display: block; width: 22px; height: 22px; }
 #dock > button svg { width: 22px; height: 22px; transition: color .2s, transform .42s var(--spring); }
 #dock > button.on svg { color: var(--accent); transform: translateY(-1px) scale(1.08); }
-#dockInd { position: absolute; left: 0; top: -1px; width: 0; height: 2px; border-radius: 2px; pointer-events: none;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: left .42s var(--spring), width .42s var(--spring), opacity .2s; }
+#dockInd { position: absolute; left: 0; top: -1px; width: 1px; height: 2px; transform-origin: 0 0; pointer-events: none;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: transform .42s var(--spring), opacity .2s; }
 
 /* ---- Money: the balance card, then the line in a card of its own, both notched like the island's ---- */
 #v-money.on { display: flex; flex-direction: column; gap: var(--sp-2); }
@@ -421,9 +421,8 @@ body.loading #nwAmount, body.loading #mNwAmount, body.loading #nwNote, body.load
 #goalList .pbar > i { box-shadow: none; }
 
 /* no browser overlay on a tap (the blue or grey square), no text selection, and no focus box after a click */
-* { -webkit-tap-highlight-color: transparent; }
-body, #pill { -webkit-touch-callout: none; }
-#pill :not(input):not(textarea):not(select) { -webkit-user-select: none; user-select: none; }
+html { -webkit-tap-highlight-color: transparent; }
+body, #pill { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 :focus:not(:focus-visible) { outline: none; }
 li[role="button"], .notch, button { touch-action: manipulation; }
 

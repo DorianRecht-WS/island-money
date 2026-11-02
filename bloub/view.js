@@ -126,7 +126,7 @@ export function createBlob(host, opts = {}) {
       if (aiming) { engine.setLook(null, clock, TURN_TIME); aiming = false; }
       return;
     }
-    if (clock - boxAt > (clock < busyUntil ? 0.04 : 0.4)) { box = host.getBoundingClientRect(); boxAt = clock; }
+    if (clock - boxAt > (clock < busyUntil ? 0.25 : 1.5)) { box = host.getBoundingClientRect(); boxAt = clock; }
     if (!box.width) return;
     if (!aiming) turnSince = clock;
     const hw = Math.max(1, window.innerWidth / 2), hh = Math.max(1, window.innerHeight / 2);
@@ -179,7 +179,7 @@ export function createBlob(host, opts = {}) {
   function tick(ms) {
     raf = requestAnimationFrame(tick);
     const quick = clock - lastBeat < 0.9 || clock < busyUntil || clock - turnAt < turnFor || focusPt || timer || (pointer && clock - pointerAt < 0.6);
-    if (!quick && (ms - drawnAt < 28 || window.notchBusy > 0)) return;
+    if (!quick && (ms - drawnAt < 42 || window.notchBusy > 0)) return;
     drawnAt = ms;
     clock += last ? Math.min((ms - last) / 1000, 0.064) : 0;
     last = ms;

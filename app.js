@@ -14,7 +14,8 @@ const CACHE_KEY = 'money.last';
 if (!localStorage.getItem('island.settings')) window.islandTheme.set({ theme: 'auto', palette: 'lilac' });
 
 const round2 = (n) => Math.round(n * 100) / 100;
-const eur = (n) => (n < 0 ? '−' : '') + '€' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });   // exact, to the cent: the number your bank shows
+const EUR = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });   // built once: a new one per call was very slow
+const eur = (n) => (n < 0 ? '−' : '') + '€' + EUR.format(Math.abs(n));   // exact, to the cent: the number your bank shows
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const fail = (e) => (e && e.message) || String(e);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -47,20 +48,26 @@ function paintBlob() {
   if (gb) gb.setColors(ink, page);   // these two sit on the page itself, not on a card
   if (wb) wb.setColors(ink, page);
 }
+let makeBlob = null;   // createBlob, once the engine files have loaded
+const BLOBS = { m: ['mBlob', 'money', 'right'], g: ['gBlob', 'heureux', 'right'], w: ['wBlob', 'fier', 'left'], l: ['lockBlob', 'money', 'right'] };
+function ensureBlob(key) {
+  const have = { m: mb, g: gb, w: wb, l: lb };
+  if (!makeBlob || have[key]) return;
+  const [host, expression, facing] = BLOBS[key], blob = makeBlob($(host), { color: 'creme', paper: '#000000', facing });
+  blob.setExpression(expression); blob.look(null);
+  if (key === 'm') mb = blob; else if (key === 'g') gb = blob; else if (key === 'w') wb = blob; else lb = blob;
+  if (key !== 'l') $(host).addEventListener('click', () => blob.play('wink', 1.2));   // a tap on it winks
+  paintBlob(); lbPaint(); blobRuns(); lockBlobRuns();
+  if (key === 'm' && !reduced && tab === 'money') blobEntrance($('mBlob'));
+}
+// the lock screen's blob if the app is locked, otherwise the blob of the screen that is open
+const wantBlobs = () => { if (document.documentElement.classList.contains('locked')) ensureBlob('l'); else ensureBlob({ money: 'm', goals: 'g', wealth: 'w' }[tab] || 'm'); };
 const loadBlob = (tries = 3) => import('./bloub/view.js').then(({ createBlob }) => {
-  mb = createBlob($('mBlob'), { color: 'creme', paper: '#000000', facing: 'right' });
-  paintBlob(); mb.setExpression('money'); mb.look(null); blobRuns();
-  gb = createBlob($('gBlob'), { color: 'creme', paper: '#000000', facing: 'right' }); gb.setExpression('heureux'); gb.look(null);
-  wb = createBlob($('wBlob'), { color: 'creme', paper: '#000000', facing: 'left' }); wb.setExpression('fier'); wb.look(null);
-  paintBlob(); blobRuns();
-  lb = createBlob($('lockBlob'), { color: 'creme', paper: '#000000', facing: 'right' });   // the big one in the middle of the lock screen
-  lbPaint(); lb.setExpression('money'); lb.look(null); lockBlobRuns();
+  makeBlob = createBlob;
   window.islandTheme.onChange(() => { paintBlob(); lbPaint(); });
   document.addEventListener('mousemove', (e) => { for (const b of [mb, lb, gb, wb]) if (b) b.look(e.clientX, e.clientY); });
   document.addEventListener('mouseleave', () => { for (const b of [mb, lb, gb, wb]) if (b) b.look(null); });
-  $('gBlob').addEventListener('click', () => gb.play('wink', 1.2)); $('wBlob').addEventListener('click', () => wb.play('wink', 1.2));
-  $('mBlob').addEventListener('click', () => mb.play('wink', 1.2));   // a tap on it winks
-  if (!reduced && tab === 'money') blobEntrance($('mBlob'));
+  if (document.documentElement.classList.contains('locked') || !window.requestIdleCallback) wantBlobs(); else requestIdleCallback(wantBlobs, { timeout: 700 });
 }).catch((e) => { console.error('blob', e); if (tries > 1) setTimeout(() => loadBlob(tries - 1), 1500); });   // no blob: the numbers still work
 loadBlob();
 
@@ -156,9 +163,11 @@ $('mbChart').addEventListener('pointerup', () => mark(data.history.length - 1, f
 // ---- the tabs: the bottom bar, with the island's sliding indicator
 const TABS = ['money', 'goals', 'wealth', 'settings'];
 let tab = '', user = null, editing = false, pending = true;   // pending: the saved session has not been read yet
+let indPos = [];   // each tab button's left and width
+function measureInd() { indPos = [...document.querySelectorAll('#dock > button')].map((b) => [b.offsetLeft, b.offsetWidth]); moveInd(); }
 function moveInd() {
-  const ind = $('dockInd'), b = document.querySelector('#dock > button.on');
-  if (b) { ind.style.left = b.offsetLeft + 'px'; ind.style.width = b.offsetWidth + 'px'; }
+  const p = indPos[TABS.indexOf(tab)];
+  if (p) $('dockInd').style.transform = `translateX(${p[0]}px) scaleX(${p[1]})`;
 }
 function showTab(t) {
   if (t === tab) return;
@@ -168,7 +177,7 @@ function showTab(t) {
   $('views').scrollTop = 0;   // each tab starts at its top
   for (const b of document.querySelectorAll('#dock button')) b.classList.toggle('on', b.dataset.t === t);
   for (const v of document.querySelectorAll('.view')) v.classList.toggle('on', v.id === 'v-' + t);
-  moveInd();
+  moveInd(); wantBlobs();
   if (t === 'money') sizeChart();
   if (t === 'wealth') loadRates();
   if (t === 'goals') loadGoals();
@@ -176,8 +185,8 @@ function showTab(t) {
   if (!first) { enter(t, true); if (t === 'money' && user) refresh(); }
 }
 $('dock').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) showTab(b.dataset.t); });
-new ResizeObserver(moveInd).observe($('dock'));
-document.fonts && document.fonts.ready.then(moveInd);
+new ResizeObserver(measureInd).observe($('dock'));
+document.fonts && document.fonts.ready.then(measureInd);
 
 // ---- settings: how it looks (the island's own theme and palette code)
 const themeButtons = [...document.querySelectorAll('#setTheme button')];
@@ -654,6 +663,7 @@ const AWAY_MS = 3000;   // away from the app for longer than this: locked when y
 const lockSay = (t) => { $('lockMsg').textContent = t; };
 // the app was drawn behind the lock cover, out of sight: once it opens, fetch again and play the screen's entrance as on a fresh start
 function afterUnlock() {
+  wantBlobs();   // the lock screen had its own blob; the screen behind it gets its one now
   if (document.body.classList.contains('loading')) introWanted = true;   // still loading: the entrance plays when it is ready
   else setTimeout(() => { enter(tab, true); if (user && tab === 'money') refresh(); }, 40);
   if (user && tab === 'goals') loadGoals();
@@ -670,7 +680,7 @@ function lockNow() {
   if (!AppLock.enabled() || root.classList.contains('locked')) return;
   closeAssetForm(); if (editing) endEdit(); if (window.Keypad) Keypad.hide();
   lockSay('Unlocking...');
-  root.classList.add('locked'); lockBlobRuns();
+  root.classList.add('locked'); wantBlobs(); lockBlobRuns();
   setTimeout(tryUnlock, 150);
 }
 $('lock').addEventListener('pointerdown', (e) => { if (!e.target.closest('#lockOut')) tryUnlock(); });
