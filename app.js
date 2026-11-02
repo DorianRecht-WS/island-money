@@ -209,7 +209,7 @@ function renderAccount() {
   $('accGo').disabled = accBusy;
   const small = (text, bad) => `<small${bad ? ' class="err"' : ''}>${esc(text)}</small>`;
   if (signedIn) {
-    $('accText').innerHTML = `${esc(user.email || 'Signed in')}${small('Connected · same balance as the island')}`;
+    $('accText').innerHTML = `${esc(user.email || 'Signed in')}${small('Signed in')}`;
     $('accBtn').textContent = 'Sign out';
   } else if (accStep === 'email') {
     $('accText').innerHTML = `Sign in with your email${small(accErr || 'We will email you a one-time code', !!accErr)}`;
@@ -413,14 +413,17 @@ function renderBank() {
   $('bankBal').hidden = !link || expired || !cashBal;
   if (cashBal) {
     const others = cashBal.balances.filter((b) => b.type !== cashBal.used), p = cashBal.pending || { count: 0, sum: 0 };
-    $('bankBal').textContent = `Your balance (${eur(cashBal.amount)}) is the ${BAL[cashBal.used] || cashBal.used} one. ` +
-      (p.count ? `It counts ${p.count} pending operation${p.count > 1 ? 's' : ''} (${signed(p.sum)}). ` : `Your bank lists no pending operations${cashBal.statuses && Object.keys(cashBal.statuses).length ? ' (it sent: ' + Object.entries(cashBal.statuses).map(([k, v]) => v + ' ' + k.toLowerCase()).join(', ') + ')' : ''}, so purchases still on their way are not in it. Tap your balance and type what your bank shows after them: it is kept until your bank's balance moves. `) +
-      (others.length ? 'Your bank also gives: ' + others.map((b) => `${BAL[b.type] || b.type} ${eur(b.amount)}${b.date ? ' as of ' + b.date : ''}`).join(', ') + '.' : '');
+    const kind = BAL[cashBal.used] || cashBal.used;
+    $('bankBal').textContent = [
+      `Balance shown: ${eur(cashBal.amount)}, the ${kind} one.`,
+      p.count ? `It counts ${p.count} pending operation${p.count > 1 ? 's' : ''} (${signed(p.sum)}).` : 'Your bank lists no pending operations, so purchases still on their way show up once the bank books them.',
+      others.length ? 'Your bank also gives: ' + others.map((b) => `${BAL[b.type] || b.type} ${eur(b.amount)}${b.date ? ' as of ' + b.date : ''}`).join(', ') + '.' : '',
+    ].filter(Boolean).join('\n');
   }
   // which accounts the bank shared: if a livret is missing here, the bank did not share it (tick it at the bank and share again)
   const KIND = { cash: 'current', savings: 'savings', investment: 'investment', debt: 'loan' };
   $('bankMore').hidden = !link || expired;
-  $('bankMore').textContent = shared.length ? `Shared: ${shared.map((x) => `${x.iban_hint ? '····' + x.iban_hint + ' ' : ''}${KIND[x.kind || 'cash']}`).join(', ')}. Share more accounts` : 'Share more accounts';
+  $('bankMore').textContent = shared.length ? `Shared: ${shared.map((x) => `${x.iban_hint ? '····' + x.iban_hint + ' ' : ''}${KIND[x.kind || 'cash']}`).join(', ')}  ·  Share more` : 'Share more accounts';
 }
 // asks the function to read the bank (it keeps its own pace: banks only allow a few reads a day); true when something was read
 async function bankSync(force) {

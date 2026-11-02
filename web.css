@@ -476,3 +476,18 @@ body.loading .mstats.sk span { background: none; }
 
 .setrow > .swatches { grid-template-columns: repeat(9, 1fr); }
 .swatches button { width: 32px; height: 32px; }
+
+/* Settings, the bank: the name and its status on top, the two buttons side by side under it, the numbers in a quiet note */
+#bankGroup .setrow { flex-wrap: wrap; align-items: stretch; }
+#bankGroup .setrow > span { flex: 1 1 100%; font-size: 15px; font-weight: 600; color: var(--text-hi); }
+#bankGroup .setrow > span small { font-weight: 400; }
+#bankGroup .setrow > .pillbtn { flex: 1 1 0 !important; min-width: 112px; min-height: 44px; }
+#bankBtn:not(.primary) { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line-2)); }
+#bankBal.fine { margin: var(--sp-1) 0 var(--sp-3); padding: 12px 14px; border-radius: 10px; background: var(--surface); font-size: 12.5px; line-height: 1.5; white-space: pre-line; color: var(--text-2); }
+#bankMore { display: flex; align-items: center; width: 100%; min-height: 44px; margin: 0 0 var(--sp-2); padding: 0; font-size: 13px; line-height: 1.4; text-align: left; color: var(--accent); white-space: normal; overflow-wrap: anywhere; }
+/* Settings, the account: the email may break anywhere, the status stays short */
+#accText { overflow-wrap: anywhere; font-size: 14px; }
+#v-settings .setrow:has(#accAv:not([hidden])) { gap: var(--sp-3); }
+#accText { font-size: 13px; letter-spacing: -.005em; }
+#v-settings .setrow:has(#accAv:not([hidden])) > .pillbtn { padding: 0 14px; min-width: 0; }
+.av { width: 36px; height: 36px; font-size: 15px; }
