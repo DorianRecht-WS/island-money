@@ -343,8 +343,8 @@ nav > button { transition: color .2s; }
 /* ---- the account card in Settings ---- */
 .pillbtn { flex: none; background: none; border: 1px solid var(--line-2); color: var(--text-2); font-size: var(--fs-meta); padding: 5px var(--sp-4); border-radius: var(--r-pill); cursor: pointer; transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast); }
 .pillbtn:hover { color: var(--text-hi); border-color: var(--text-3); }
-.pillbtn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
-.pillbtn.primary:hover { filter: brightness(1.1); color: var(--on-accent); }
+.pillbtn.primary { background: var(--btn, var(--accent)); border-color: var(--btn, var(--accent)); color: var(--on-accent); font-weight: 600; }
+.pillbtn.primary:hover { background: var(--btn-hover, var(--btn, var(--accent))); border-color: var(--btn-hover, var(--btn, var(--accent))); filter: brightness(1.1); color: var(--on-accent); }
 .av { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font-style: normal; font-weight: 700; font-size: var(--fs-body); }
 .av[hidden] { display: none; }
 #accText .code { display: block; font: 600 var(--fs-code) var(--mono); letter-spacing: .14em; color: var(--text-hi); }

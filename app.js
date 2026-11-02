@@ -763,7 +763,7 @@ function renderGoals() {
   $('gSum').textContent = !user ? 'Sign in to add some' : !goals.length ? 'Add the first thing you are saving for' : next ? `Closest: ${next.title} · ${Math.round(next.pct * 100)}%` : 'Time for a new one?';
   if (user && !goalsLoaded) { goalsHtml = ''; $('gHeroT').textContent = ''; $('gSum').textContent = ''; $('goalList').innerHTML = '<li class="gtile gsk"><div class="sk2"></div></li><li class="gtile gsk"><div class="sk2"></div></li>'; return; }
   const html = goals.map((g, i) => {
-    const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.state === 'On track' ? 'ontrack' : '', hue = GOAL_HUES[i % GOAL_HUES.length], open = goalOpen.has(g.id), bar = v.done ? 'var(--ok)' : hue;
+    const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.state === 'On track' ? 'ontrack' : '', hue = GOAL_HUES[i % GOAL_HUES.length], open = goalOpen.has(g.id), bar = v.done ? 'var(--ok)' : `var(--goal, ${hue})`;
     // the chip in the notch: a tick once the goal is reached, otherwise a ring that fills as the goal does
     const chip = v.done ? '<path d="M6.5 12.5l3.8 3.8 7.2-8.1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
       : `<circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-opacity=".3" stroke-width="2.4"/><circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="${Math.max(pct, 3)} 100" transform="rotate(-90 12 12)"/>`;

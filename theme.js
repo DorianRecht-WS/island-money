@@ -28,6 +28,19 @@
         dark: { '--bg': '#17171a', '--card': '#252526', '--card-line': '#33323c', '--surface': '#2f2d3a', '--surface-2': '#3b3850', '--line': '#1f1f24', '--line-2': '#544f69',
           '--text-hi': '#f1f2f4', '--text': '#e4e3ea', '--text-2': '#c0bcdf', '--text-3': '#a6a3a1', '--text-4': '#6d6980', '--on-accent': '#ffffff', '--blob-ink': '#f1f2f4' },
       } },
+    mint:   { name: 'Mint',   a: ['#36b98a', '#36b98a'], b: ['#7fd6b3', '#194a40'],
+      surfaces: {
+        light: { '--bg': '#f3f7f3', '--card': '#ffffff', '--card-line': '#e2eae4', '--surface': '#edf3ee', '--surface-2': '#e2eae4', '--line': '#e2eae4', '--line-2': '#d3ded6',
+          '--text-hi': '#263b36', '--text': '#263b36', '--text-2': '#4d625b', '--text-3': '#82918a', '--text-4': '#aab8b1', '--on-accent': '#ffffff', '--blob-ink': '#263b36', '--edge': 'rgba(38, 59, 54, .10)',
+          '--ok': '#239b70', '--danger': '#d95f62', '--warn': '#e7a94b', '--goal': '#e7a94b', '--btn': '#194a40', '--btn-hover': '#102c2a' },
+        dark: { '--bg': '#0f1a17', '--card': '#17251f', '--card-line': '#22352d', '--surface': '#1e302a', '--surface-2': '#274038', '--line': '#1a2a25', '--line-2': '#2f4a41',
+          '--text-hi': '#f3f7f3', '--text': '#dfe9e3', '--text-2': '#b2c4bb', '--text-3': '#82918a', '--text-4': '#5c6c65', '--on-accent': '#0f1a17', '--blob-ink': '#f3f7f3',
+          '--ok': '#3ccf9b', '--danger': '#e8787b', '--warn': '#e7a94b', '--goal': '#e7a94b', '--btn': '#36b98a', '--btn-hover': '#4fcaa0' },
+      },
+      hues: {
+        light: { violet: '#194a40', sky: '#36b98a', green: '#239b70', orange: '#82918a', pink: '#e7a94b', yellow: '#e7a94b', blue: '#194a40', lime: '#36b98a', red: '#d95f62' },
+        dark: { violet: '#36b98a', sky: '#7fd6b3', green: '#3ccf9b', orange: '#82918a', pink: '#e7a94b', yellow: '#e7a94b', blue: '#5fbf9f', lime: '#7fd6b3', red: '#e8787b' },
+      } },
     sky:    { name: 'Sky',    a: ['#8ec5ff', '#3b82d9'], b: ['#c9a6ff', '#8a5fe0'] },
   };
   // hues for the cards' chips (Money): each kind of card has its own, so neighbours never match; [on dark, on light]
@@ -46,13 +59,14 @@
     root.dataset.theme = r;
     // surfaces: the shared dark base, or the palette's own (a palette like Sand restyles the page and the cards too)
     const own = p.surfaces && p.surfaces[dark ? 'dark' : 'light'];
-    for (const k of new Set([...Object.keys(BASE), '--on-accent', '--blob-ink', '--edge'])) {
+    for (const k of new Set([...Object.keys(BASE), '--on-accent', '--blob-ink', '--edge', '--ok', '--warn', '--danger', '--goal', '--btn', '--btn-hover'])) {
       const v = own && own[k] !== undefined ? own[k] : dark ? BASE[k] : undefined;
       v !== undefined ? root.style.setProperty(k, v) : root.style.removeProperty(k);
     }
     root.style.setProperty('--accent', p.a[dark ? 0 : 1]);
     root.style.setProperty('--accent-2', p.b[dark ? 0 : 1]);
-    for (const [k, v] of Object.entries(HUES)) root.style.setProperty('--c-' + k, v[dark ? 0 : 1]);
+    const hv = p.hues && p.hues[dark ? 'dark' : 'light'];   // a palette can carry its own chip colours (Mint keeps them calm)
+    for (const [k, v] of Object.entries(HUES)) root.style.setProperty('--c-' + k, (hv && hv[k]) || v[dark ? 0 : 1]);
     for (const f of listeners) f(r);
   }
   light.addEventListener('change', () => { if (s.theme === 'auto') apply(); });

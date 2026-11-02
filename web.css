@@ -473,3 +473,6 @@ body.loading .mstats.sk span { background: none; }
 
 .setrow > .swatches { grid-template-columns: repeat(8, 1fr); }
 .swatches button { width: 34px; height: 34px; }
+
+.setrow > .swatches { grid-template-columns: repeat(9, 1fr); }
+.swatches button { width: 32px; height: 32px; }
