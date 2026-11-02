@@ -25,7 +25,7 @@ button, a, #dock { -webkit-tap-highlight-color: transparent; }
 #dock > button:hover { color: var(--text-2); }
 #dock > button.on { color: var(--text-hi); }
 #dock > button i { display: block; width: 22px; height: 22px; }
-#dock > button svg { width: 22px; height: 22px; transition: color .2s, transform .42s var(--spring); }
+#dock > button svg { width: 22px; height: 22px; transition: transform .42s var(--spring); }
 #dock > button.on svg { color: var(--accent); transform: translateY(-1px) scale(1.08); }
 #dockInd { position: absolute; left: 0; top: -1px; width: 1px; height: 2px; transform-origin: 0 0; pointer-events: none;
   background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: transform .42s var(--spring), opacity .2s; }
@@ -338,7 +338,7 @@ body.loading #nwAmount, body.loading #mNwAmount, body.loading #nwNote, body.load
 .gnum b { font-size: 20px; font-weight: 700; letter-spacing: -.02em; color: var(--text-hi); font-variant-numeric: tabular-nums; }
 .gnum span { font-size: var(--fs-meta); color: var(--text-3); font-variant-numeric: tabular-nums; }
 #goalList .pbar { margin: 0; height: 5px; }
-.gdw { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .38s var(--ease); }
+.gdw { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .32s cubic-bezier(.3, .7, .2, 1); }
 .gtile.open .gdw { grid-template-rows: 1fr; }
 .gdet { overflow: hidden; min-height: 0; }
 .gin { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-2); opacity: 0; transition: opacity .3s var(--ease); }
@@ -427,11 +427,9 @@ body, #pill { -webkit-touch-callout: none; -webkit-user-select: none; user-selec
 li[role="button"], .notch, button { touch-action: manipulation; }
 
 /* a goal answers a tap at once: it presses in and lights up while the finger is down */
-#goalList li.gtile { transition: transform .18s var(--spring); }
-#goalList li.gtile:active { transform: scale(.975); }
 #goalList li.gtile:active::before { background: var(--surface-2); }
 .gstate.behind { background: var(--surface-2); color: var(--text-2); }
-@media (prefers-reduced-motion: reduce) { #goalList li.gtile { transition: none; } #goalList li.gtile:active { transform: none; } }
+
 
 /* a little depth: every card casts a soft shadow that follows its notched shape, with a faint light edge on top */
 :root { --drop: 0 3px 5px rgba(0, 0, 0, .38); --edge-hi: rgba(255, 255, 255, .07); }
@@ -490,3 +488,19 @@ body.loading .mstats.sk span { background: none; }
 #accText { font-size: 13px; letter-spacing: -.005em; }
 #v-settings .setrow:has(#accAv:not([hidden])) > .pillbtn { padding: 0 14px; min-width: 0; }
 .av { width: 36px; height: 36px; font-size: 15px; }
+
+/* Tabs stay laid out once the page is idle: a switch toggles height and visibility instead of building the whole screen again */
+.view.warm { display: flex; flex-direction: column; gap: var(--sp-3); }
+.view.warm:not(.on) { height: 0; min-height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
+
+/* the slide-in of a screen: one animation per direction (a variable on the page root would restyle everything) */
+@keyframes viewInR { from { opacity: 0; transform: translateX(18px); } }
+@keyframes viewInL { from { opacity: 0; transform: translateX(-18px); } }
+.view.on { animation: viewInR .34s var(--ease); }
+#views[data-dir="l"] .view.on { animation-name: viewInL; }
+@media (prefers-reduced-motion: reduce) { .view.on { animation: none; } }
+
+/* the cover that slides off the line when the Money screen opens */
+.chartcover { position: absolute; inset: -4px -4px -4px -4px; background: var(--card); transform: translateX(101%); pointer-events: none; will-change: transform; }
+
+.chartbox { overflow: hidden; }

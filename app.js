@@ -98,10 +98,7 @@ function countUp(el, to, dur = 1000, delay = 0, from = 0) {
 }
 function drawIn() {
   if (reduced) return;
-  const bl = $('mbLine'), blen = bl.getTotalLength();
-  bl.style.strokeDasharray = blen;
-  bl.animate([{ strokeDashoffset: blen }, { strokeDashoffset: 0 }], { duration: 1300, delay: 320, easing: 'cubic-bezier(.35, .1, .2, 1)', fill: 'backwards' });
-  $('mbArea').animate([{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }], { duration: 1300, delay: 320, easing: 'cubic-bezier(.35, .1, .2, 1)', fill: 'backwards' });
+  $('mbCover').animate([{ transform: 'translateX(0)' }, { transform: 'translateX(101%)' }], { duration: 1300, delay: 320, easing: 'cubic-bezier(.35, .1, .2, 1)', fill: 'backwards' });
   for (const id of ['mbDot', 'mbHalo']) $(id).animate([{ opacity: 0, transform: 'scale(.2)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 520, delay: 1500, easing: 'cubic-bezier(.2, 1.4, .3, 1)', fill: 'backwards' });
 }
 // the cards of a screen spring open when it comes into view
@@ -172,7 +169,7 @@ function moveInd() {
 function showTab(t) {
   if (t === tab) return;
   const first = !tab;
-  document.documentElement.style.setProperty('--tab-dx', (TABS.indexOf(t) > TABS.indexOf(tab) ? 18 : -18) + 'px');
+  $('views').dataset.dir = TABS.indexOf(t) > TABS.indexOf(tab) ? 'r' : 'l';   // which way the new screen slides in
   tab = t;
   $('views').scrollTop = 0;   // each tab starts at its top
   for (const b of document.querySelectorAll('#dock button')) b.classList.toggle('on', b.dataset.t === t);
@@ -776,11 +773,11 @@ function renderGoals() {
   $('gSum').textContent = !user ? 'Sign in to add some' : !goals.length ? 'Add the first thing you are saving for' : next ? `Closest: ${next.title} · ${Math.round(next.pct * 100)}%` : 'Time for a new one?';
   if (user && !goalsLoaded) { goalsHtml = ''; $('gHeroT').textContent = ''; $('gSum').textContent = ''; $('goalList').innerHTML = '<li class="gtile gsk"><div class="sk2"></div></li><li class="gtile gsk"><div class="sk2"></div></li>'; return; }
   const html = goals.map((g, i) => {
-    const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.state === 'On track' ? 'ontrack' : '', hue = GOAL_HUES[i % GOAL_HUES.length], open = goalOpen.has(g.id), bar = v.done ? 'var(--ok)' : `var(--goal, ${hue})`;
+    const v = views[i], pct = Math.round(v.pct * 100), tone = v.done ? 'done' : v.state === 'On track' ? 'ontrack' : '', hue = GOAL_HUES[i % GOAL_HUES.length], bar = v.done ? 'var(--ok)' : `var(--goal, ${hue})`;
     // the chip in the notch: a tick once the goal is reached, otherwise a ring that fills as the goal does
     const chip = v.done ? '<path d="M6.5 12.5l3.8 3.8 7.2-8.1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
       : `<circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-opacity=".3" stroke-width="2.4"/><circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="${Math.max(pct, 3)} 100" transform="rotate(-90 12 12)"/>`;
-    return `<li class="gtile notch${open ? ' open' : ''}" style="--chip:${v.done ? 'var(--ok)' : hue}" data-id="${esc(g.id)}" tabindex="0" role="button" aria-expanded="${open}">
+    return `<li class="gtile notch" style="--chip:${v.done ? 'var(--ok)' : hue}" data-id="${esc(g.id)}" tabindex="0" role="button" aria-expanded="false">
       <i><svg viewBox="0 0 24 24" fill="none">${chip}</svg></i>
       <div class="gmain">
         <div class="gh"><i style="background:${hue}"></i><b>${esc(v.title)}</b><span class="gstate ${tone}">${esc(v.state)}</span></div>
@@ -797,6 +794,7 @@ function renderGoals() {
   }).join('') || `<li class="empty">${user ? (goalsReady ? 'Tap Add a goal to start something you are saving for.' : 'Needs the database update.') : 'Sign in to add your goals.'}</li>`;
   if (html === goalsHtml) return;   // nothing changed: leave the cards alone (rebuilding them was a flicker)
   goalsHtml = html; $('goalList').innerHTML = html;
+  for (const li of $('goalList').children) if (goalOpen.has(li.dataset.id)) { li.classList.add('open'); li.setAttribute('aria-expanded', 'true'); }
   for (const li of $('goalList').querySelectorAll('li.notch')) notchAttach(li);
   if (goalsIntro && tab === 'goals') { goalsIntro = false; rise([...$('goalList').children], 30); notchIn($('goalList')); }
 }
@@ -991,6 +989,8 @@ renderGoals();
 renderLock();
 if (root.classList.contains('locked')) tryUnlock();   // the cover is already up (lock.js ran first)
 showTab('money');
+const warmUp = (ids) => { const id = ids.shift(); if (id) (window.requestIdleCallback || setTimeout)(() => { $(id).classList.add('warm'); warmUp(ids); }, { timeout: 4000 }); };
+setTimeout(() => warmUp(['v-goals', 'v-wealth', 'v-settings']), 2200);   // after the first screen has played its entrance: a tab switch then only flips visibility
 setTimeout(() => loadRates(), 1500);   // after the first paint
 if (bankReturn) showTab('settings');   // coming back from the bank: show the result where it was started
 sizeChart();
